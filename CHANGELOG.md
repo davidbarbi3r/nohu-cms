@@ -12,3 +12,12 @@ Première version :
 - Build : `getContent`, `getEntries`, migrations D1 appliquées par la lib.
 - CLI : `init`, `doctor`, `dev`, `migrate`, `set-hook`, `skill`.
 - Skill Claude `nohu-cms-setup`.
+
+Corrigé après un premier essai sur un vrai site (bun, Astro 6) :
+
+- dépendances acceptant des versions plus anciennes (bun refuse par défaut
+  les versions publiées depuis moins de 7 jours) ;
+- `init` : `compatibility_date` un mois en arrière (un wrangler un peu ancien
+  refuse une date plus récente que lui) ; import de l'intégration placé après
+  les imports existants (`// @ts-check` reste en tête) ;
+- une page et une collection peuvent porter le même nom.

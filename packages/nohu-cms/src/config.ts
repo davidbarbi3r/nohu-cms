@@ -280,9 +280,6 @@ export function checkConfig(config: CmsConfig): string[] {
   for (const [name, definition] of Object.entries(config.collections ?? {})) {
     const at = `collections.${name}`;
     if (!ID.test(name)) problems.push(`${at} : identifiant invalide`);
-    if (name in (config.pages ?? {})) {
-      problems.push(`${at} : porte le même nom qu'une page`);
-    }
     if (!definition.path?.includes('[slug]')) {
       problems.push(`${at} : path doit contenir [slug] (ex. /blog/[slug])`);
     }

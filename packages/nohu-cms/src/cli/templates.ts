@@ -144,7 +144,12 @@ DEV_ADMIN_EMAIL=${email}
 /** Ajoute l'intégration dans astro.config.* ; `null` si le fichier ne s'y prête pas. */
 export function addIntegration(source: string): string | null {
   if (source.includes('nohu-cms/astro')) return source;
-  const withImport = `import nohuCms from 'nohu-cms/astro';\n${source}`;
+  // Après le dernier import : les commentaires de tête (// @ts-check) restent en tête.
+  const statement = "import nohuCms from 'nohu-cms/astro';\n";
+  const imports = [...source.matchAll(/^import .+;?$/gm)];
+  const last = imports[imports.length - 1];
+  const at = last ? last.index! + last[0].length + 1 : 0;
+  const withImport = source.slice(0, at) + statement + source.slice(at);
   if (/integrations\s*:\s*\[/.test(source)) {
     return withImport.replace(
       /integrations\s*:\s*\[/,

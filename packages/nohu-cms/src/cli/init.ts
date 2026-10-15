@@ -233,7 +233,11 @@ async function run(cwd: string, deps: InitDeps, dryRun: boolean) {
     databaseId: PLACEHOLDER_ID,
     teamDomain: '',
     aud: '',
-    compatibilityDate: new Date().toISOString().slice(0, 10),
+    // Un mois en arrière : le runtime local d'un wrangler un peu ancien
+    // refuse une date plus récente que lui.
+    compatibilityDate: new Date(Date.now() - 30 * 86_400_000)
+      .toISOString()
+      .slice(0, 10),
   };
 
   // 4. Base D1 et stockage R2

@@ -171,6 +171,14 @@ describe('init --dry-run', () => {
 });
 
 describe('templates', () => {
+  it('ajoute l’import après les imports existants, sans déplacer // @ts-check', () => {
+    const source =
+      "// @ts-check\nimport { defineConfig } from 'astro/config';\nimport react from '@astrojs/react';\n\nexport default defineConfig({ integrations: [react()] });\n";
+    expect(addIntegration(source)).toBe(
+      "// @ts-check\nimport { defineConfig } from 'astro/config';\nimport react from '@astrojs/react';\nimport nohuCms from 'nohu-cms/astro';\n\nexport default defineConfig({ integrations: [nohuCms(), react()] });\n",
+    );
+  });
+
   it('ajoute l’intégration à une liste existante', () => {
     expect(
       addIntegration(

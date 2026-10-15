@@ -59,8 +59,14 @@ const config = {
 };
 
 describe('config', () => {
-  it('accepte une config valide', () => {
+  it('accepte une config valide, y compris une page et une collection de même nom', () => {
     expect(checkConfig(config)).toEqual([]);
+    expect(
+      checkConfig({
+        ...config,
+        pages: { ...config.pages, articles: page('Liste', '/blog', {}) },
+      }),
+    ).toEqual([]);
     expect(defineCms(config)).toBe(config);
   });
 
