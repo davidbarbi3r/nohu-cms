@@ -14,6 +14,12 @@ interface BaseField {
   help?: string;
   /** Un champ optionnel peut être laissé vide. */
   optional?: boolean;
+  /**
+   * Champ technique, absent de l'admin (ancre, cadrage…). Sa valeur suit son
+   * élément quand on réordonne une liste ; un nouvel élément reçoit la valeur
+   * d'origine du champ.
+   */
+  hidden?: boolean;
 }
 
 export interface ScalarField extends BaseField {
@@ -36,7 +42,11 @@ export interface ImageVariant {
 }
 
 export interface ImageValue {
-  /** Chemin dans `public/` (image d'origine) ou `/media/<id>/<largeur>.<ext>`. */
+  /**
+   * `asset:<chemin depuis src/>` (image du projet, optimisée au build par
+   * Astro), chemin dans `public/`, ou `/media/<id>/<largeur>.<ext>` (photo
+   * envoyée dans l'admin).
+   */
   src: string;
   alt: string;
   width?: number;
@@ -96,6 +106,21 @@ const scalar =
     default: value,
     ...options,
   });
+
+/** Préfixe des images du projet, résolues au build par `astro:assets`. */
+export const ASSET_PREFIX = 'asset:';
+
+/**
+ * Image du projet comme valeur d'origine : chemin depuis `src/`
+ * (`asset('assets/photos/grange.jpg', 'La grange')`). Elle est optimisée au
+ * build ; une photo envoyée dans l'admin la remplace.
+ */
+export const asset = (path: string, alt: string): ImageValue => ({
+  src: `${ASSET_PREFIX}${path.replace(/^\.?\/?(src\/)?/, '')}`,
+  alt,
+});
+
+export const isAssetSrc = (src: string) => src.startsWith(ASSET_PREFIX);
 
 export const text = scalar('text');
 export const textarea = scalar('textarea');
@@ -175,9 +200,12 @@ export const MEDIA_SRC =
 
 export const mediaId = (src: string) => MEDIA_SRC.exec(src)?.[1] ?? null;
 
-/** Image d'origine du site (`public/`) ou média envoyé dans l'admin. */
+/** Image du projet, image de `public/` ou média envoyé dans l'admin. */
 const isImageSrc = (value: string) =>
   MEDIA_SRC.test(value) ||
+  (isAssetSrc(value) &&
+    /^asset:[^/\\][^\\]*$/.test(value) &&
+    !value.includes('..')) ||
   (value.startsWith('/') && !value.startsWith('//') && !value.includes('..'));
 
 const isPositiveInt = (value: unknown) =>
@@ -186,7 +214,11 @@ const isPositiveInt = (value: unknown) =>
   value > 0 &&
   value <= 10000;
 
-function checkImage(field: ImageField, value: unknown): string | null {
+function checkImage(
+  field: ImageField,
+  value: unknown,
+  options: ValidateOptions = {},
+): string | null {
   if (value === null || value === undefined) {
     return field.optional ? null : 'est obligatoire';
   }
@@ -196,6 +228,13 @@ function checkImage(field: ImageField, value: unknown): string | null {
   const image = value as Partial<ImageValue>;
   if (typeof image.src !== 'string' || !isImageSrc(image.src)) {
     return 'a une adresse d’image invalide';
+  }
+  if (
+    isAssetSrc(image.src) &&
+    options.assets &&
+    !options.assets.has(image.src)
+  ) {
+    return 'désigne une image du site inconnue';
   }
   if (typeof image.alt !== 'string' || !image.alt.trim()) {
     return 'doit avoir une description (texte alternatif)';
@@ -245,15 +284,20 @@ function checkScalar(field: ScalarField, value: unknown): string | null {
 
 const RICH_TEXT_MAX = 200_000;
 
-function checkItem(field: ItemField, value: unknown) {
+function checkItem(field: ItemField, value: unknown, options: ValidateOptions) {
   return field.kind === 'image'
-    ? checkImage(field, value)
+    ? checkImage(field, value, options)
     : checkScalar(field, value);
 }
 
 export interface ValidateOptions {
   /** Brouillon : les champs obligatoires peuvent rester vides. */
   draft?: boolean;
+  /**
+   * Images du projet autorisées (`asset:…` cités dans la config). Sans cette
+   * liste, tout chemin `asset:` bien formé est accepté.
+   */
+  assets?: ReadonlySet<string>;
 }
 
 /** Valeur vide (champ non rempli). */
@@ -282,7 +326,7 @@ export function validateValue(
   options: ValidateOptions = {},
 ): string | null {
   if (options.draft && isEmptyValue(field, value)) return null;
-  if (field.kind === 'image') return checkImage(field, value);
+  if (field.kind === 'image') return checkImage(field, value, options);
   if (field.kind === 'richtext') {
     if (typeof value !== 'string') return 'doit être un texte';
     if (!field.optional && isEmptyValue(field, value)) {
@@ -307,6 +351,7 @@ export function validateValue(
       const error = checkItem(
         subField,
         raw ?? (subField.kind === 'image' ? null : ''),
+        options,
       );
       if (error) return `élément ${index + 1}, « ${subField.label} » ${error}`;
     }
@@ -365,4 +410,16 @@ export function referencedMedia(serialized: string): string[] {
     /\/media\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\//g,
   );
   return [...new Set([...ids].map((match) => match[1]))];
+}
+
+/** Toutes les images du projet (`asset:…`) citées dans une valeur quelconque. */
+export function collectAssets(value: unknown, found = new Set<string>()) {
+  if (typeof value === 'string') {
+    if (isAssetSrc(value)) found.add(value);
+  } else if (Array.isArray(value)) {
+    for (const item of value) collectAssets(item, found);
+  } else if (value && typeof value === 'object') {
+    for (const item of Object.values(value)) collectAssets(item, found);
+  }
+  return found;
 }

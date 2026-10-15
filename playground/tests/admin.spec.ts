@@ -95,3 +95,52 @@ test('publier un article avec photo et texte mis en forme', async ({
   expect(media.status()).toBe(200);
   expect(media.headers()['cache-control']).toContain('immutable');
 });
+
+test('réordonner une liste garde chaque photo et chaque ancre avec son élément', async ({
+  page,
+}) => {
+  await page.goto('/admin/#/pages/accueil');
+  const items = page.locator('.list-item__title');
+  const first = (await items.nth(0).textContent())!;
+  const second = (await items.nth(1).textContent())!;
+  // Le champ technique « Ancre » n'apparaît pas.
+  await page.getByRole('button', { name: `Descendre « ${first} »` }).click();
+  await expect(items.nth(0)).toHaveText(second);
+  await page.getByRole('button', { name: 'Enregistrer et publier' }).click();
+  await expect(page.getByText(/Enregistré/)).toBeVisible();
+
+  await expect
+    .poll(
+      async () => {
+        const html = await (await page.request.get('/')).text();
+        return (
+          html.indexOf(second) < html.indexOf(first) && html.indexOf(second) > 0
+        );
+      },
+      { timeout: 60_000, intervals: [1000] },
+    )
+    .toBe(true);
+  const html = await (await page.request.get('/')).text();
+  // La photo du projet suit son élément, toujours optimisée au build.
+  const moved = html.slice(html.indexOf(first));
+  expect(moved).toMatch(/^[\s\S]*?<img src="\/_astro\/atelier\.[^"]+\.webp"/);
+  expect(html).toContain('id="decouverte"');
+
+  // Remise dans l'ordre d'origine pour les autres tests.
+  await page.goto('/admin/#/pages/accueil');
+  await page
+    .getByRole('button', { name: 'Rétablir la liste d’origine' })
+    .click();
+  await page.getByRole('button', { name: 'Enregistrer et publier' }).click();
+  await expect(page.getByText(/Enregistré/)).toBeVisible();
+});
+
+test('les images du projet ont un aperçu dans l’admin', async ({ page }) => {
+  await page.goto('/admin/#/pages/accueil');
+  const preview = page.locator('.cover__preview img').first();
+  await expect(preview).toHaveAttribute('src', /\/_astro\/atelier\..+\.webp/);
+  expect(
+    await preview.evaluate((img: HTMLImageElement) => img.naturalWidth),
+  ).toBeGreaterThan(0);
+  await expect(page.getByText('Ancre')).toHaveCount(0);
+});

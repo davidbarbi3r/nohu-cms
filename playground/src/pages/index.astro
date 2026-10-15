@@ -23,9 +23,10 @@ const articles = (await getEntries(config, 'articles')).slice(0, 3);
   <h2>{accueil.services.items.length} prestations</h2>
   <ul>
     {accueil.services.items.map((item) => (
-      <li>
+      <li id={item.ancre || undefined}>
         <strong>{item.name}</strong> — {item.price}
         {item.description && <p>{item.description}</p>}
+        <CmsImage image={item.photo} sizes="10rem" style="max-width: 10rem" />
       </li>
     ))}
   </ul>

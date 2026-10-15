@@ -1,4 +1,4 @@
-import { listFields } from '../../config';
+import { knownAssets, listFields } from '../../config';
 import {
   normalizeValue,
   sameValue,
@@ -59,7 +59,9 @@ export async function saveContent({
       continue;
     }
     const value = normalizeValue(ref.field, raw);
-    const error = validateValue(ref.field, value);
+    const error = validateValue(ref.field, value, {
+      assets: knownAssets(config),
+    });
     if (error) {
       errors[key] = `« ${ref.field.label} » ${error}.`;
       continue;

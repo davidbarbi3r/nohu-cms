@@ -1461,3 +1461,17 @@ img {
 .rte__content img.ProseMirror-selectednode {
   outline: 3px solid var(--amber);
 }
+
+.cover__placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 10rem;
+  color: var(--muted);
+}
+
+.cover__placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 10rem;
+  color: var(--muted);
+}

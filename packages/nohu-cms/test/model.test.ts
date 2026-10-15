@@ -11,6 +11,8 @@ import {
   validateEntry,
 } from '../src/config';
 import {
+  asset,
+  collectAssets,
   image,
   list,
   referencedMedia,
@@ -156,6 +158,43 @@ describe('champs', () => {
         srcset: [{ src: '/media/autre/640.webp', width: 640 }],
       }),
     ).toMatch(/variantes/);
+  });
+
+  it('accepte les images du projet, limitées à celles de la config', () => {
+    const field = image('Photo');
+    const grange = asset('src/assets/photos/Grange 3.JPEG', 'La grange');
+    expect(grange.src).toBe('asset:assets/photos/Grange 3.JPEG');
+    expect(validateValue(field, grange)).toBeNull();
+    expect(
+      validateValue(field, { src: 'asset:../secret.jpg', alt: 'x' }),
+    ).toMatch(/adresse/);
+    expect(validateValue(field, { src: 'asset:/etc/x.jpg', alt: 'x' })).toMatch(
+      /adresse/,
+    );
+    const known = new Set([grange.src]);
+    expect(validateValue(field, grange, { assets: known })).toBeNull();
+    expect(
+      validateValue(field, asset('assets/autre.jpg', 'x'), { assets: known }),
+    ).toMatch(/inconnue/);
+    const withList = list(
+      'Activités',
+      {
+        itemLabel: 'une activité',
+        itemTitle: 'titre',
+        fields: { titre: text('Titre'), photo: image('Photo') },
+      },
+      [{ titre: 'A', photo: grange }],
+    );
+    expect(
+      validateValue(
+        withList,
+        [{ titre: 'B', photo: asset('assets/x.jpg', 'x') }],
+        { assets: known },
+      ),
+    ).toMatch(/inconnue/);
+    expect([...collectAssets({ pages: { a: withList } })]).toEqual([
+      grange.src,
+    ]);
   });
 
   it('retrouve les médias cités, y compris dans du HTML', () => {

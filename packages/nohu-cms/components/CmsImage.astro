@@ -1,36 +1,99 @@
 ---
 /**
- * Image éditable : image d'origine (`public/`) ou photo envoyée dans l'admin,
- * avec ses variantes de largeur (`srcset`). N'affiche rien si l'image est vide.
+ * Image éditable. Selon la valeur :
+ * - `asset:<chemin depuis src/>` : image du projet, optimisée au build par
+ *   `astro:assets` (formats modernes, plusieurs largeurs) ;
+ * - `/media/…` : photo envoyée dans l'admin, avec ses variantes (`srcset`,
+ *   déjà redimensionnées et compressées à l'envoi) ;
+ * - autre chemin : fichier de `public/`, affiché tel quel.
+ * N'affiche rien si l'image est vide.
  */
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
 import type { HTMLAttributes } from 'astro/types';
 import type { ImageValue } from 'nohu-cms';
 
-interface Props extends Omit<HTMLAttributes<'img'>, 'src' | 'alt' | 'srcset'> {
+interface Props extends Omit<
+  HTMLAttributes<'img'>,
+  'src' | 'alt' | 'srcset' | 'width' | 'height'
+> {
   image: ImageValue | null | undefined;
   /** Largeur affichée, pour choisir la bonne variante (ex. `(min-width: 60rem) 50vw, 100vw`). */
   sizes?: string;
+  /** Largeurs générées pour une image du projet. */
+  widths?: number[];
+  /** Remplace le texte alternatif (ex. `""` pour une image décorative). */
+  alt?: string;
 }
 
-const { image, sizes = '100vw', loading = 'lazy', ...attributes } = Astro.props;
-const srcset = image?.srcset?.length
-  ? [...image.srcset]
-      .sort((a, b) => a.width - b.width)
-      .map((variant) => `${variant.src} ${variant.width}w`)
-      .join(', ')
-  : undefined;
+const {
+  image,
+  sizes = '100vw',
+  widths = [480, 800, 1200, 1600, 2000],
+  loading = 'lazy',
+  alt,
+  ...attributes
+} = Astro.props;
+
+// Toutes les images de src/ ; seules celles affichées sont chargées.
+const projectImages = import.meta.glob<{ default: ImageMetadata }>(
+  '/src/**/*.{jpg,jpeg,png,webp,avif,gif,svg,tiff,JPG,JPEG,PNG,WEBP,AVIF,GIF,SVG,TIFF}',
+);
+
+let asset: ImageMetadata | undefined;
+if (image?.src.startsWith('asset:')) {
+  const path = `/src/${image.src.slice('asset:'.length)}`;
+  const load = projectImages[path];
+  if (!load) {
+    throw new Error(
+      `[nohu-cms] Image introuvable : ${path} (asset('${image.src.slice('asset:'.length)}') dans cms.config.ts).`,
+    );
+  }
+  asset = (await load()).default;
+}
+
+const description = alt ?? image?.alt ?? '';
+const srcset =
+  !asset && image?.srcset?.length
+    ? [...image.srcset]
+        .sort((a, b) => a.width - b.width)
+        .map((variant) => `${variant.src} ${variant.width}w`)
+        .join(', ')
+    : undefined;
+// Un SVG n'a pas de variantes de largeur.
+const assetWidths =
+  asset && asset.format !== 'svg'
+    ? [
+        ...new Set([
+          ...widths.filter((width) => width < asset!.width),
+          asset.width,
+        ]),
+      ]
+    : undefined;
 ---
 
-{image && (
-  <img
-    src={image.src}
-    alt={image.alt}
-    width={image.width}
-    height={image.height}
-    srcset={srcset}
-    sizes={srcset ? sizes : undefined}
+{asset ? (
+  <Image
+    src={asset}
+    alt={description}
+    widths={assetWidths}
+    sizes={sizes}
     loading={loading}
     decoding="async"
     {...attributes}
   />
+) : (
+  image && (
+    <img
+      src={image.src}
+      alt={description}
+      width={image.width}
+      height={image.height}
+      srcset={srcset}
+      sizes={srcset ? sizes : undefined}
+      loading={loading}
+      decoding="async"
+      {...attributes}
+    />
+  )
 )}

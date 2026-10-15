@@ -111,13 +111,18 @@ export default defineCms({
 });
 ```
 
-| Champ                  | Valeur                                   | Notes                                            |
-| ---------------------- | ---------------------------------------- | ------------------------------------------------ |
-| `text`, `textarea`     | `string`                                 | `max`, `optional`, `help`                        |
-| `url`, `email`, `date` | `string`                                 | validés ; date `AAAA-MM-JJ`                      |
-| `richtext`             | HTML                                     | titres, listes, liens, photos ; nettoyé au build |
-| `image`                | `{ src, alt, width?, height?, srcset? }` | `null` en valeur d'origine = facultative         |
-| `list`                 | tableau d'objets                         | sous-champs `text`…`image`, `min`, `max`         |
+| Champ                  | Valeur                                   | Notes                                                  |
+| ---------------------- | ---------------------------------------- | ------------------------------------------------------ |
+| `text`, `textarea`     | `string`                                 | `max`, `optional`, `help`                              |
+| `url`, `email`, `date` | `string`                                 | validés ; date `AAAA-MM-JJ`                            |
+| `richtext`             | HTML                                     | titres, listes, liens, photos ; nettoyé au build       |
+| `image`                | `{ src, alt, width?, height?, srcset? }` | `asset(…)` ou `null` en valeur d'origine (voir Images) |
+| `list`                 | tableau d'objets                         | sous-champs `text`…`image`, `min`, `max`               |
+
+Option commune `hidden: true` : champ technique absent de l'admin (ancre d'un
+lien de menu, cadrage d'une photo…). Dans une liste, sa valeur suit son
+élément quand la cliente réordonne ; un nouvel élément reçoit la valeur
+d'origine du champ.
 
 Les valeurs écrites dans la config sont les **valeurs d'origine** : la base ne
 stocke que ce qui en diffère. Changer une valeur d'origine met donc le site à
@@ -130,6 +135,28 @@ aucune migration.
 > Renommer ou supprimer un champ change sa clé de stockage
 > (`page.section.champ`) : une valeur modifiée dans l'admin est alors ignorée,
 > et le build l'écrit dans ses logs.
+
+## Images
+
+Les photos du site restent dans `src/` et sont **optimisées au build** par
+`astro:assets`, même quand elles sont modifiables :
+
+```ts
+import { asset, image } from 'nohu-cms';
+
+photo: image('Photo', asset('assets/photos/grange.jpg', 'La grange en pierres')),
+```
+
+- `asset(chemin depuis src/, description)` : image du projet. `<CmsImage>` la
+  passe à `<Image>` d'Astro (formats modernes, plusieurs largeurs, `widths` et
+  `sizes` réglables). L'admin en affiche une vignette générée au build.
+- Une photo envoyée dans l'admin la remplace : elle est redimensionnée dans le
+  navigateur (WebP, 3 largeurs), stockée dans R2 et servie sur `/media/…`.
+  « Rétablir la photo d'origine » revient à l'image du projet.
+- Seules les images du projet citées dans la config peuvent être enregistrées
+  (contrôle côté serveur) : une liste réordonnée garde les siennes.
+- Un chemin commençant par `/` désigne un fichier de `public/`, affiché tel
+  quel.
 
 ## Afficher le contenu
 

@@ -4,6 +4,7 @@
  * telle quelle à l'admin et relue par le Worker pour valider les écritures.
  */
 import {
+  collectAssets,
   isDate,
   isEmptyValue,
   normalizeValue,
@@ -152,6 +153,21 @@ export function defineCms<const C extends CmsConfig>(config: C): C {
 }
 
 // ── Parcours ─────────────────────────────────────────────────────────────────
+
+const assetsCache = new WeakMap<CmsConfig, ReadonlySet<string>>();
+
+/**
+ * Images du projet (`asset:…`) citées dans la config : les seules qu'une
+ * valeur enregistrée peut désigner (ex. après réordonnancement d'une liste).
+ */
+export function knownAssets(config: CmsConfig): ReadonlySet<string> {
+  let assets = assetsCache.get(config);
+  if (!assets) {
+    assets = collectAssets(config);
+    assetsCache.set(config, assets);
+  }
+  return assets;
+}
 
 /** Clé de stockage d'un champ de page : `page.section.champ`. */
 export const fieldKey = (pageId: string, sectionId: string, fieldId: string) =>
@@ -351,6 +367,7 @@ export function cleanEntryInput(
 export function validateEntry(
   definition: CollectionDef,
   input: EntryInput,
+  assets?: ReadonlySet<string>,
 ): EntryErrors {
   const errors: EntryErrors = {};
   const draft = input.status !== 'published';
@@ -368,7 +385,7 @@ export function validateEntry(
 
   for (const [id, field] of Object.entries(definition.fields)) {
     const value = (input.data as Record<string, unknown>)[id];
-    const error = validateValue(field, value, { draft });
+    const error = validateValue(field, value, { draft, assets });
     if (error) {
       errors[`data.${id}`] =
         !draft && isEmptyValue(field, value)

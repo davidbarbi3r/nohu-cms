@@ -3,6 +3,7 @@
  * ici sont les valeurs d'origine : l'admin ne stocke que ce qui en diffère.
  */
 import {
+  asset,
   collection,
   defineCms,
   email,
@@ -35,12 +36,10 @@ export default defineCms({
           'Introduction',
           'Des cours en petits groupes, à votre rythme.\nRéservation en ligne.',
         ),
-        photo: image('Photo', {
-          src: '/images/hero.svg',
-          alt: 'Illustration de l’atelier',
-          width: 1200,
-          height: 600,
-        }),
+        photo: image(
+          'Photo',
+          asset('assets/atelier.png', 'Illustration de l’atelier'),
+        ),
       }),
       services: section('Prestations', {
         items: list(
@@ -52,11 +51,25 @@ export default defineCms({
               name: text('Nom'),
               price: text('Tarif'),
               description: textarea('Description', '', { optional: true }),
+              photo: image('Photo', null, { optional: true }),
+              ancre: text('Ancre', '', { optional: true, hidden: true }),
             },
           },
           [
-            { name: 'Séance découverte', price: '20 €', description: '' },
-            { name: 'Carte 10 séances', price: '180 €', description: '' },
+            {
+              name: 'Séance découverte',
+              price: '20 €',
+              description: '',
+              photo: asset('assets/atelier.png', 'Une séance découverte'),
+              ancre: 'decouverte',
+            },
+            {
+              name: 'Carte 10 séances',
+              price: '180 €',
+              description: '',
+              photo: null,
+              ancre: 'carte',
+            },
           ],
         ),
       }),

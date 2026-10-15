@@ -1,8 +1,10 @@
 import {
   cleanEntryInput,
   entryFromRow,
+  knownAssets,
   sortEntries,
   validateEntry,
+  type CmsConfig,
   type CollectionDef,
   type EntryInput,
   type EntryRow,
@@ -42,13 +44,14 @@ async function getEntry(env: CmsEnv, collection: string, id: string) {
 }
 
 async function checkEntry(
+  config: CmsConfig,
   env: CmsEnv,
   collection: string,
   definition: CollectionDef,
   input: EntryInput,
   currentId = '',
 ) {
-  const errors = validateEntry(definition, input);
+  const errors = validateEntry(definition, input, knownAssets(config));
   if (!errors.slug) {
     const clash = await env.DB.prepare(
       'SELECT 1 FROM cms_entries WHERE collection = ?1 AND slug = ?2 AND id != ?3',
@@ -109,7 +112,13 @@ export async function createEntry(request: AdminRequest) {
   const cleaned = cleanEntryInput(definition, await readJson(request.request));
   if (!cleaned) return fail(400, 'Données invalides.');
   const input = withPublishDate(cleaned);
-  const errors = await checkEntry(env, params.collection, definition, input);
+  const errors = await checkEntry(
+    request.config,
+    env,
+    params.collection,
+    definition,
+    input,
+  );
   if (Object.keys(errors).length) return invalid(errors);
 
   const id = crypto.randomUUID();
@@ -148,6 +157,7 @@ export async function updateEntry(request: AdminRequest) {
   if (!cleaned) return fail(400, 'Données invalides.');
   const input = withPublishDate(cleaned);
   const errors = await checkEntry(
+    request.config,
     env,
     params.collection,
     definition,

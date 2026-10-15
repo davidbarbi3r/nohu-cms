@@ -4,12 +4,42 @@
  * config du site y est sérialisée, l'application se charge dans le
  * navigateur et parle à l'API /api/admin du Worker. En production, /admin et
  * /api/admin sont protégés par Cloudflare Access.
+ *
+ * Les images du projet citées dans la config (`asset:…`) n'ont pas d'adresse
+ * publique : on génère ici une vignette de chacune pour les aperçus de l'admin.
  */
+import { getImage } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
 import config from 'virtual:nohu-cms/config';
+import { knownAssets } from 'nohu-cms';
 import 'nohu-cms/admin.css';
 
+const projectImages = import.meta.glob<{ default: ImageMetadata }>(
+  '/src/**/*.{jpg,jpeg,png,webp,avif,gif,svg,tiff,JPG,JPEG,PNG,WEBP,AVIF,GIF,SVG,TIFF}',
+);
+
+const previews: Record<string, string> = {};
+for (const src of knownAssets(config)) {
+  const load = projectImages[`/src/${src.slice('asset:'.length)}`];
+  if (!load) continue;
+  const image = (await load()).default;
+  previews[src] =
+    image.format === 'svg'
+      ? image.src
+      : (
+          await getImage({
+            src: image,
+            width: Math.min(image.width, 800),
+            format: 'webp',
+          })
+        ).src;
+}
+
 // `<` échappé : le JSON ne peut pas fermer la balise <script>.
-const serialized = JSON.stringify(config).replace(/</g, '\\u003c');
+const serialized = JSON.stringify({ config, previews }).replace(
+  /</g,
+  '\\u003c',
+);
 ---
 
 <!doctype html>

@@ -4,6 +4,7 @@
  * `nohu-cms/worker`, l'intégration Astro dans `nohu-cms/astro`.
  */
 export {
+  asset,
   date,
   email,
   image,
@@ -27,6 +28,7 @@ export {
   collection,
   defineCms,
   entryPath,
+  knownAssets,
   page,
   section,
   slugify,

@@ -58,7 +58,14 @@ C'est la partie qui demande du jugement. Pour chaque page de `src/pages/` :
 3. Choisir le bon type :
    - `text` (une ligne, `max` pour les titres), `textarea` (plusieurs lignes),
      `richtext` (mise en forme : titres, listes, liens, photos), `url`,
-     `email`, `date`, `image` (chemin dans `public/` + description),
+     `email`, `date`, `image` : pour une photo du projet (importée depuis
+     `src/`), valeur d'origine `asset('assets/photos/x.jpg', 'description')`
+     — elle reste optimisée au build ; afficher avec `<CmsImage>` (props
+     `widths`, `sizes`, `class`, `style`), qui remplace `<Image>`,
+   - `hidden: true` pour les valeurs techniques liées à un élément de liste
+     (ancre de menu, cadrage `object-position`…) : la cliente ne les voit
+     pas, et elles suivent l'élément quand elle réordonne la liste. Ne jamais
+     lier une photo ou une ancre à la position d'un élément,
    - `list(libellé, { itemLabel, itemTitle, fields }, valeurs)` pour les
      éléments répétés ; chaque valeur d'origine a exactement les sous-champs
      déclarés.

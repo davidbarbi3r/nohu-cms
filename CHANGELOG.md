@@ -21,3 +21,11 @@ Corrigé après un premier essai sur un vrai site (bun, Astro 6) :
   refuse une date plus récente que lui) ; import de l'intégration placé après
   les imports existants (`// @ts-check` reste en tête) ;
 - une page et une collection peuvent porter le même nom.
+
+Ajouté :
+
+- images du projet comme valeurs d'origine (`asset('assets/…', alt)`),
+  optimisées au build par `astro:assets`, avec vignette dans l'admin ; seules
+  celles citées dans la config sont acceptées par le serveur ;
+- option `hidden` pour les champs techniques (ancre, cadrage), qui suivent
+  leur élément quand on réordonne une liste.

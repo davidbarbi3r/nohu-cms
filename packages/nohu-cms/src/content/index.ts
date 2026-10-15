@@ -15,6 +15,7 @@
 import {
   entryFromRow,
   entryPath,
+  knownAssets,
   listFields,
   sortEntries,
   type CmsConfig,
@@ -131,11 +132,12 @@ function resolveValue(
   field: Field,
   raw: unknown,
   where: string,
+  assets: ReadonlySet<string>,
   draft = false,
 ): StoredValue {
   if (raw === undefined) return field.default as StoredValue;
   const candidate = normalizeValue(field, raw);
-  const error = validateValue(field, candidate, { draft });
+  const error = validateValue(field, candidate, { draft, assets });
   if (!error) return candidate;
   console.warn(
     `[nohu-cms] Valeur ignorée pour ${where} (${error}), valeur d'origine utilisée.`,
@@ -169,7 +171,7 @@ async function loadContent(config: CmsConfig) {
     content[ref.pageId][ref.sectionId] ??= {};
     content[ref.pageId][ref.sectionId][ref.fieldId] = finalize(
       ref.field,
-      resolveValue(ref.field, raw, ref.key),
+      resolveValue(ref.field, raw, ref.key, knownAssets(config)),
     );
   }
   for (const key of stored.keys()) {
@@ -212,7 +214,13 @@ async function loadEntries(config: CmsConfig, name: string): Promise<Entry[]> {
         id,
         finalize(
           field,
-          resolveValue(field, raw[id], `${name}/${entry.slug}.${id}`, true),
+          resolveValue(
+            field,
+            raw[id],
+            `${name}/${entry.slug}.${id}`,
+            knownAssets(config),
+            true,
+          ),
         ),
       ]),
     ) as Entry['data'];

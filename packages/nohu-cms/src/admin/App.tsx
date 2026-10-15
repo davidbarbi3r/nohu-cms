@@ -4,7 +4,7 @@ import type { CmsConfig } from '../config';
 import type { StoredValue } from '../fields';
 import { BUILD_DURATION_MS, type PublishStatus } from '../protocol';
 import { api, ApiError } from './api';
-import { ConfigContext, useConfig } from './context';
+import { ConfigContext, PreviewContext, useConfig } from './context';
 import { EntryEditor, EntryList } from './Entries';
 import { PageEditor } from './PageEditor';
 import {
@@ -47,14 +47,22 @@ function parseRoute(config: CmsConfig, hash: string): Route {
     : { name: 'page', pageId: pages[0] };
 }
 
-export default function App({ config }: { config: CmsConfig }) {
+export default function App({
+  config,
+  previews = {},
+}: {
+  config: CmsConfig;
+  previews?: Record<string, string>;
+}) {
   return (
     <ConfigContext.Provider value={config}>
-      <ToastProvider>
-        <ConfirmProvider>
-          <AdminShell />
-        </ConfirmProvider>
-      </ToastProvider>
+      <PreviewContext.Provider value={previews}>
+        <ToastProvider>
+          <ConfirmProvider>
+            <AdminShell />
+          </ConfirmProvider>
+        </ToastProvider>
+      </PreviewContext.Provider>
     </ConfigContext.Provider>
   );
 }

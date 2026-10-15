@@ -1,6 +1,6 @@
 /** Formulaire des contenus d'une page, généré depuis cms.config.ts. */
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { fieldKey, listFields } from '../config';
+import { fieldKey, knownAssets, listFields } from '../config';
 import {
   normalizeValue,
   sameValue,
@@ -85,7 +85,9 @@ export function PageEditor({
     const found: Record<string, string> = {};
     for (const { key, field } of refs) {
       if (!dirtyKeys.includes(key)) continue;
-      const error = validateValue(field, draft[key]);
+      const error = validateValue(field, draft[key], {
+        assets: knownAssets(config),
+      });
       if (error) found[key] = `« ${field.label} » ${error}.`;
     }
     setErrors(found);

@@ -12,6 +12,7 @@ import type {
 } from '../fields';
 import { ApiError } from './api';
 import { ACCEPTED_IMAGES, uploadImage } from './image';
+import { usePreview } from './context';
 import { RichTextEditor } from './RichTextEditor';
 import { AutoTextarea, FieldShell, useConfirm, useId } from './ui';
 
@@ -29,6 +30,8 @@ export interface FieldInputProps<F extends Field = Field, V = StoredValue> {
 
 export function FieldInput(props: FieldInputProps) {
   const { field } = props;
+  // Champ technique : sa valeur est conservée, mais il n'apparaît pas.
+  if (field.hidden) return null;
   if (field.kind === 'list') {
     return (
       <ListEditor
@@ -145,6 +148,7 @@ function RichTextInput(props: FieldInputProps<RichTextField, string>) {
 function ImageInput(props: FieldInputProps<ImageField, ImageValue | null>) {
   const { field, value } = props;
   const id = useId('image');
+  const preview = usePreview();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState('');
@@ -198,7 +202,11 @@ function ImageInput(props: FieldInputProps<ImageField, ImageValue | null>) {
       <div class="cover">
         {value ? (
           <div class="cover__preview">
-            <img src={value.src} alt="" />
+            {preview(value.src) ? (
+              <img src={preview(value.src)} alt="" />
+            ) : (
+              <div class="cover__placeholder">Image du site</div>
+            )}
             <div class="cover__actions">
               <button
                 type="button"
@@ -286,6 +294,10 @@ function ImageInput(props: FieldInputProps<ImageField, ImageValue | null>) {
 const emptyItemValue = (field: ItemField) =>
   field.kind === 'image' ? null : '';
 
+/** Nouvel élément : vide, sauf les champs techniques (valeur d'origine). */
+const newItemValue = (field: ItemField) =>
+  field.hidden ? field.default : emptyItemValue(field);
+
 /** Titre d'un élément replié : son sous-champ `itemTitle`. */
 function itemTitleOf(field: ListField, item: Record<string, unknown>) {
   const raw = item[field.itemTitle];
@@ -331,7 +343,7 @@ function ListEditor(
     const empty = Object.fromEntries(
       Object.entries(field.fields).map(([subId, subField]) => [
         subId,
-        emptyItemValue(subField),
+        newItemValue(subField),
       ]),
     );
     props.onChange([...value, empty]);

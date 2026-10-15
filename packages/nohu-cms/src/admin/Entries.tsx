@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import {
   emptyEntry,
   entryPath,
+  knownAssets,
   slugify,
   validateEntry,
   type CollectionDef,
@@ -14,7 +15,7 @@ import {
 import type { ImageValue, StoredValue } from '../fields';
 import { formatDate } from '../format';
 import { api, ApiError } from './api';
-import { useConfig } from './context';
+import { useConfig, usePreview } from './context';
 import { FieldInput } from './fields';
 import {
   FieldShell,
@@ -148,6 +149,7 @@ function EntryGroup(props: {
   entries: Entry[];
   navigate: Navigate;
 }) {
+  const preview = usePreview();
   return (
     <section class="entry-group">
       <h2>{props.title}</h2>
@@ -166,8 +168,8 @@ function EntryGroup(props: {
                 }}
               >
                 <span class="entry-row__thumb">
-                  {thumbnail ? (
-                    <img src={thumbnail} alt="" loading="lazy" />
+                  {thumbnail && preview(thumbnail) ? (
+                    <img src={preview(thumbnail)} alt="" loading="lazy" />
                   ) : (
                     <span aria-hidden="true">◌</span>
                   )}
@@ -209,7 +211,8 @@ export function EntryEditor({
   onDirtyChange,
   onPublished,
 }: EditorProps) {
-  const definition = useConfig().collections?.[name] as CollectionDef;
+  const config = useConfig();
+  const definition = config.collections?.[name] as CollectionDef;
   const toast = useToast();
   const confirm = useConfirm();
   const [loaded, setLoaded] = useState<Entry | null>(null);
@@ -286,7 +289,7 @@ export function EntryEditor({
       status,
       slug: snapshot.slug || slugify(snapshot.title),
     };
-    const found = validateEntry(definition, input);
+    const found = validateEntry(definition, input, knownAssets(config));
     setErrors(found);
     if (Object.keys(found).length) {
       toast(
