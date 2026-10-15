@@ -62,8 +62,15 @@ export interface ImageField<
   default: V;
 }
 
+/** Choix parmi une liste fermée (menu déroulant dans l'admin). */
+export interface SelectField extends BaseField {
+  kind: 'select';
+  default: string;
+  options: { value: string; label: string }[];
+}
+
 /** Champs autorisés dans les éléments d'une liste. */
-export type ItemField = ScalarField | ImageField;
+export type ItemField = ScalarField | RichTextField | ImageField | SelectField;
 
 export type ItemValues<I extends Record<string, ItemField>> = {
   [K in keyof I]: FieldValue<I[K]>;
@@ -83,7 +90,8 @@ export interface ListField<
   max?: number;
 }
 
-export type Field = ScalarField | RichTextField | ImageField | ListField;
+export type Field =
+  ScalarField | RichTextField | SelectField | ImageField | ListField;
 
 export type FieldValue<F> =
   F extends ListField<infer I>
@@ -106,6 +114,29 @@ const scalar =
     default: value,
     ...options,
   });
+
+/**
+ * Choix fermé : `select('Prof', [{ value: 'edwige', label: 'Edwige' }, …])`
+ * ou `select('Lieu', ['sol', 'airs'])`. Valeur d'origine : la première option
+ * si elle n'est pas donnée.
+ */
+export function select(
+  label: string,
+  options: (string | { value: string; label: string })[],
+  value?: string,
+  extra: BaseOptions = {},
+): SelectField {
+  const normalized = options.map((option) =>
+    typeof option === 'string' ? { value: option, label: option } : option,
+  );
+  return {
+    kind: 'select',
+    label,
+    options: normalized,
+    default: value ?? normalized[0]?.value ?? '',
+    ...extra,
+  };
+}
 
 /** Préfixe des images du projet, résolues au build par `astro:assets`. */
 export const ASSET_PREFIX = 'asset:';
@@ -284,10 +315,27 @@ function checkScalar(field: ScalarField, value: unknown): string | null {
 
 const RICH_TEXT_MAX = 200_000;
 
+function checkRichText(field: RichTextField, value: unknown): string | null {
+  if (typeof value !== 'string') return 'doit être un texte';
+  if (!field.optional && isEmptyValue(field, value)) {
+    return 'ne peut pas être vide';
+  }
+  return value.length > RICH_TEXT_MAX ? 'est trop long' : null;
+}
+
+function checkSelect(field: SelectField, value: unknown): string | null {
+  if (typeof value !== 'string') return 'doit être un choix';
+  if (!value) return field.optional ? null : 'doit être choisi';
+  return field.options.some((option) => option.value === value)
+    ? null
+    : 'n’est pas un choix possible';
+}
+
 function checkItem(field: ItemField, value: unknown, options: ValidateOptions) {
-  return field.kind === 'image'
-    ? checkImage(field, value, options)
-    : checkScalar(field, value);
+  if (field.kind === 'image') return checkImage(field, value, options);
+  if (field.kind === 'richtext') return checkRichText(field, value);
+  if (field.kind === 'select') return checkSelect(field, value);
+  return checkScalar(field, value);
 }
 
 export interface ValidateOptions {
@@ -327,13 +375,8 @@ export function validateValue(
 ): string | null {
   if (options.draft && isEmptyValue(field, value)) return null;
   if (field.kind === 'image') return checkImage(field, value, options);
-  if (field.kind === 'richtext') {
-    if (typeof value !== 'string') return 'doit être un texte';
-    if (!field.optional && isEmptyValue(field, value)) {
-      return 'ne peut pas être vide';
-    }
-    return value.length > RICH_TEXT_MAX ? 'est trop long' : null;
-  }
+  if (field.kind === 'richtext') return checkRichText(field, value);
+  if (field.kind === 'select') return checkSelect(field, value);
   if (field.kind !== 'list') return checkScalar(field, value);
   if (!Array.isArray(value)) return 'doit être une liste';
   if (field.min !== undefined && value.length < field.min) {
@@ -348,9 +391,11 @@ export function validateValue(
     }
     for (const [subId, subField] of Object.entries(field.fields)) {
       const raw = (item as Record<string, unknown>)[subId];
+      const missing = raw === undefined || raw === null;
+      if (options.draft && missing) continue;
       const error = checkItem(
         subField,
-        raw ?? (subField.kind === 'image' ? null : ''),
+        missing ? (subField.kind === 'image' ? null : '') : raw,
         options,
       );
       if (error) return `élément ${index + 1}, « ${subField.label} » ${error}`;

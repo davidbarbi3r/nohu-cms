@@ -8,6 +8,7 @@ import type {
   ListField,
   RichTextField,
   ScalarField,
+  SelectField,
   StoredValue,
 } from '../fields';
 import { ApiError } from './api';
@@ -50,6 +51,9 @@ export function FieldInput(props: FieldInputProps) {
     return (
       <RichTextInput {...(props as FieldInputProps<RichTextField, string>)} />
     );
+  }
+  if (field.kind === 'select') {
+    return <SelectInput {...(props as FieldInputProps<SelectField, string>)} />;
   }
   return <ScalarInput {...(props as FieldInputProps<ScalarField, string>)} />;
 }
@@ -109,6 +113,36 @@ function ScalarInput(props: FieldInputProps<ScalarField, string>) {
           onInput={(event) => props.onChange(event.currentTarget.value)}
         />
       )}
+    </FieldShell>
+  );
+}
+
+function SelectInput(props: FieldInputProps<SelectField, string>) {
+  const { field } = props;
+  const id = useId('select');
+  return (
+    <FieldShell
+      id={id}
+      label={field.label}
+      help={field.help}
+      error={props.error}
+      optional={field.optional}
+      modified={props.modified}
+      onReset={props.onReset}
+    >
+      <select
+        id={id}
+        value={props.value ?? ''}
+        aria-invalid={props.error ? true : undefined}
+        onChange={(event) => props.onChange(event.currentTarget.value)}
+      >
+        {(field.optional || !props.value) && <option value="">—</option>}
+        {field.options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
     </FieldShell>
   );
 }
@@ -292,7 +326,7 @@ function ImageInput(props: FieldInputProps<ImageField, ImageValue | null>) {
 }
 
 const emptyItemValue = (field: ItemField) =>
-  field.kind === 'image' ? null : '';
+  field.kind === 'image' ? null : field.kind === 'select' ? field.default : '';
 
 /** Nouvel élément : vide, sauf les champs techniques (valeur d'origine). */
 const newItemValue = (field: ItemField) =>
@@ -301,6 +335,18 @@ const newItemValue = (field: ItemField) =>
 /** Titre d'un élément replié : son sous-champ `itemTitle`. */
 function itemTitleOf(field: ListField, item: Record<string, unknown>) {
   const raw = item[field.itemTitle];
+  const titleField = field.fields[field.itemTitle];
+  if (titleField?.kind === 'select') {
+    return (
+      titleField.options.find((option) => option.value === raw)?.label ?? ''
+    );
+  }
+  if (titleField?.kind === 'richtext' && typeof raw === 'string') {
+    return raw
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
   if (typeof raw === 'string') return raw.trim();
   if (raw && typeof raw === 'object' && 'alt' in raw) {
     return String((raw as ImageValue).alt).trim();
@@ -425,6 +471,7 @@ function ListEditor(
                     <FieldInput
                       key={subId}
                       field={subField}
+                      revision={props.revision}
                       value={
                         (item[subId] ?? emptyItemValue(subField)) as StoredValue
                       }

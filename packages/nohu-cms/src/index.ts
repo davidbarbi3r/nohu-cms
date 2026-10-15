@@ -10,6 +10,7 @@ export {
   image,
   list,
   richtext,
+  select,
   text,
   textarea,
   url,
@@ -22,6 +23,7 @@ export {
   type ListField,
   type RichTextField,
   type ScalarField,
+  type SelectField,
 } from './fields';
 export {
   checkConfig,

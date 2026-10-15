@@ -60,15 +60,14 @@ const srcset =
         .map((variant) => `${variant.src} ${variant.width}w`)
         .join(', ')
     : undefined;
-// Un SVG n'a pas de variantes de largeur.
+// Pas d'agrandissement, ni de variante à la largeur d'origine (souvent
+// énorme pour une photo d'appareil) ; un SVG n'a pas de variantes.
+const smaller = asset ? widths.filter((width) => width <= asset!.width) : [];
 const assetWidths =
   asset && asset.format !== 'svg'
-    ? [
-        ...new Set([
-          ...widths.filter((width) => width < asset!.width),
-          asset.width,
-        ]),
-      ]
+    ? smaller.length
+      ? smaller
+      : [asset.width]
     : undefined;
 ---
 

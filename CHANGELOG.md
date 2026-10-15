@@ -28,4 +28,7 @@ Ajouté :
   optimisées au build par `astro:assets`, avec vignette dans l'admin ; seules
   celles citées dans la config sont acceptées par le serveur ;
 - option `hidden` pour les champs techniques (ancre, cadrage), qui suivent
-  leur élément quand on réordonne une liste.
+  leur élément quand on réordonne une liste ;
+- champ `select` (choix fermé, menu déroulant dans l'admin) ;
+- `richtext` et `select` acceptés dans les éléments d'une liste ;
+- `CmsImage` : plus de variante à la largeur d'origine d'une photo du projet.

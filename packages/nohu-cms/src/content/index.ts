@@ -105,7 +105,7 @@ async function query<T>(sql: string, params?: unknown[]): Promise<T[]> {
   return (await db.query(sql, params)) as T[];
 }
 
-const PLAIN_KINDS = new Set(['url', 'email', 'date']);
+const PLAIN_KINDS = new Set(['url', 'email', 'date', 'select']);
 
 /** Mise en forme finale : typographie française, HTML nettoyé. */
 function finalize(field: Field, value: StoredValue): StoredValue {

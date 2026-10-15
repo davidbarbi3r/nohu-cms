@@ -235,6 +235,9 @@ function checkFields(
     const at = `${where}.${fieldId}`;
     if (!ID.test(fieldId)) problems.push(`${at} : identifiant invalide`);
     if (!field.label?.trim()) problems.push(`${at} : libellé manquant`);
+    if (field.kind === 'select' && !field.options.length) {
+      problems.push(`${at} : choix sans options`);
+    }
     if (field.kind === 'list') {
       if (!(field.itemTitle in field.fields)) {
         problems.push(`${at} : itemTitle « ${field.itemTitle} » inconnu`);
@@ -245,6 +248,9 @@ function checkFields(
         }
         if ((subField.kind as string) === 'list') {
           problems.push(`${at}.${subId} : pas de liste dans une liste`);
+        }
+        if (subField.kind === 'select' && !subField.options.length) {
+          problems.push(`${at}.${subId} : choix sans options`);
         }
       }
       for (const [index, item] of field.default.entries()) {

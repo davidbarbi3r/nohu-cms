@@ -17,6 +17,7 @@ import {
   list,
   referencedMedia,
   richtext,
+  select,
   text,
   textarea,
   url,
@@ -195,6 +196,36 @@ describe('champs', () => {
     expect([...collectAssets({ pages: { a: withList } })]).toEqual([
       grange.src,
     ]);
+  });
+
+  it('valide les choix fermés et le texte mis en forme dans une liste', () => {
+    const prof = select('Prof', [
+      { value: 'edwige', label: 'Edwige' },
+      { value: 'marion', label: 'Marion' },
+    ]);
+    expect(prof.default).toBe('edwige');
+    expect(validateValue(prof, 'marion')).toBeNull();
+    expect(validateValue(prof, 'inconnu')).toMatch(/choix possible/);
+    expect(
+      validateValue(
+        select('Lieu', ['sol', 'airs'], '', { optional: true }),
+        '',
+      ),
+    ).toBeNull();
+
+    const team = list(
+      'Équipe',
+      {
+        itemLabel: 'une personne',
+        itemTitle: 'nom',
+        fields: { nom: text('Nom'), bio: richtext('Présentation'), prof },
+      },
+      [{ nom: 'Edwige', bio: '<p>Yoga</p>', prof: 'edwige' }],
+    );
+    expect(validateValue(team, team.default)).toBeNull();
+    expect(
+      validateValue(team, [{ nom: 'X', bio: '', prof: 'edwige' }]),
+    ).toMatch(/Présentation/);
   });
 
   it('retrouve les médias cités, y compris dans du HTML', () => {
