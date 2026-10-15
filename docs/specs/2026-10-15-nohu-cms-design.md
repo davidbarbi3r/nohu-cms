@@ -1,6 +1,6 @@
 # nohu-cms — spec de conception
 
-Date : 2026-10-15 · Statut : à valider
+Date : 2026-10-15 · Statut : validée
 
 ## 1. Objectif
 
@@ -123,8 +123,7 @@ Options communes : `help`, `optional`, `max`.
 
 ## 4. Stockage D1
 
-Migrations livrées dans le package (`node_modules/nohu-cms/migrations`),
-référencées par `migrations_dir` dans `wrangler.jsonc`. Les migrations de la
+Migrations livrées dans le package (`nohu-cms/migrations`). Les migrations de la
 lib sont uniquement additives ; une nouvelle migration = version mineure au
 minimum, documentée dans le CHANGELOG.
 
@@ -135,12 +134,12 @@ cms_entries (id TEXT PK, collection TEXT, slug TEXT, status TEXT CHECK (draft|pu
              title TEXT, published_at TEXT, data TEXT /* JSON */, created_at, updated_at, updated_by,
              UNIQUE (collection, slug))
 cms_media   (id TEXT PK, width INT, height INT, created_at, created_by)
-cms_meta    (key TEXT PK, value TEXT)  -- dernière publication, schema_version
+cms_meta    (key TEXT PK, value TEXT)  -- dernière publication
+cms_migrations (name TEXT PK, applied_at TEXT)
 ```
 
-Le build lit `cms_meta.schema_version` et échoue avec un message clair si la
-base est en retard sur la lib (« lance `npx nohu-cms migrate --remote` »).
-Appliquer les migrations automatiquement pendant le build dépend du spike S2.
+Les migrations sont appliquées par la lib elle-même (§4 bis) : pas de
+`migrations_dir` dans `wrangler.jsonc`.
 
 ## 5. Images
 
@@ -311,11 +310,24 @@ Il contient aussi les règles de maintenance (équivalent de la section
 | `scripts/dev-admin.mjs`                   | `cli dev`                                 |
 | `docs/admin.md`                           | `init` + `doctor` + guide d'installation  |
 
-## 13. Spikes à lever en premier
+## 13. Spikes (levés le 2026-10-15)
 
-| #  | Question | Repli si non |
-| -- | -------- | ------------ |
-| S1 | Un deploy hook Workers Builds peut-il être créé par l'API ? | étape manuelle + `set-hook` |
-| S2 | Le build Workers Builds peut-il appliquer les migrations D1 (jeton disponible pendant la commande de build) ? | `migrate --remote` manuel, build bloqué si base en retard (§4) |
-| S3 | `migrations_dir` pointant dans `node_modules` fonctionne-t-il avec wrangler (local et remote) ? | `init`/`migrate` copient les migrations dans `migrations/nohu/` du site |
-| S4 | Création d'une application + règle Access par l'API avec un jeton à droits limités | étapes du tableau de bord affichées par `init` |
+| #  | Question | Résultat | Décision |
+| -- | -------- | -------- | -------- |
+| S1 | Créer un deploy hook par l'API ? | Non documenté : seul le déclenchement (`POST /workers/builds/deploy_hooks/{uuid}`) l'est. | Étape manuelle dans le tableau de bord, puis `npx nohu-cms set-hook <url>`. |
+| S2 | Jeton disponible pendant la commande de build Workers Builds ? | Non garanti par la doc (seuls `CI`, `WORKERS_CI*` sont listés). | Migrateur propre à la lib (§4 bis) via l'API REST D1 avec `CMS_API_TOKEN` (D1 Edit). |
+| S3 | `migrations_dir` dans `node_modules` ? | Rendu inutile par S2. | Pas de `migrations_dir` : la lib applique ses migrations elle-même. |
+| S4 | Application + règle Access par l'API ? | Oui : `POST /accounts/{id}/access/apps` (droit « Access: Apps and Policies Write »), domaine d'équipe via `GET /accounts/{id}/access/organizations`. | `init` le fait si un jeton est fourni, sinon affiche les étapes. |
+
+### §4 bis — Migrateur
+
+- Les migrations sont des fichiers SQL embarqués dans le package
+  (`migrations/0001_init.sql`, …), suivis dans la table `cms_migrations
+  (name TEXT PK, applied_at TEXT)`.
+- Exécuteurs : distant (API REST D1 `/accounts/{id}/d1/database/{db}/query`,
+  jeton `CMS_API_TOKEN`) et local (`wrangler d1 execute DB --local`).
+- Le build (source `d1` ou `local`) applique les migrations en attente avant
+  de lire le contenu. `npx nohu-cms migrate [--local|--remote]` fait de même à
+  la demande. Le jeton de build `CMS_API_TOKEN` demande donc le droit
+  **D1 Edit** (et non plus seulement lecture).
+- Cela remplace la vérification `schema_version` du §4.
