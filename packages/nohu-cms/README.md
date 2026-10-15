@@ -111,13 +111,14 @@ export default defineCms({
 });
 ```
 
-| Champ                  | Valeur                                   | Notes                                                  |
-| ---------------------- | ---------------------------------------- | ------------------------------------------------------ |
-| `text`, `textarea`     | `string`                                 | `max`, `optional`, `help`                              |
-| `url`, `email`, `date` | `string`                                 | validés ; date `AAAA-MM-JJ`                            |
-| `richtext`             | HTML                                     | titres, listes, liens, photos ; nettoyé au build       |
-| `image`                | `{ src, alt, width?, height?, srcset? }` | `asset(…)` ou `null` en valeur d'origine (voir Images) |
-| `list`                 | tableau d'objets                         | sous-champs `text`…`image`, `min`, `max`               |
+| Champ                  | Valeur                                   | Notes                                                             |
+| ---------------------- | ---------------------------------------- | ----------------------------------------------------------------- |
+| `text`, `textarea`     | `string`                                 | `max`, `optional`, `help`                                         |
+| `url`, `email`, `date` | `string`                                 | validés ; date `AAAA-MM-JJ`                                       |
+| `richtext`             | HTML                                     | titres, listes, liens, photos ; nettoyé au build                  |
+| `image`                | `{ src, alt, width?, height?, srcset? }` | `asset(…)` ou `null` en valeur d'origine (voir Images)            |
+| `select`               | `string`                                 | `select('Lieu', ['sol', 'airs'])` ou `{ value, label }`           |
+| `list`                 | tableau d'objets                         | sous-champs simples, `select`, `richtext`, `image` ; `min`, `max` |
 
 Option commune `hidden: true` : champ technique absent de l'admin (ancre d'un
 lien de menu, cadrage d'une photo…). Dans une liste, sa valeur suit son
