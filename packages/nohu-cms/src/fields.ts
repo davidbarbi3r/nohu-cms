@@ -167,8 +167,10 @@ export const richtext = (
 ): RichTextField => ({ kind: 'richtext', label, default: value, ...options });
 
 /**
- * Image : `null` comme valeur d'origine (ou `optional: true`) rend l'image
- * facultative dans les types (`ImageValue | null`).
+ * Image. Seule une image `optional: true` peut être vide (`ImageValue |
+ * null` dans les types) : une image obligatoire déclarée sans valeur
+ * d'origine (`image('Photo')`, typique d'un champ de liste ou de collection)
+ * est garantie par la validation.
  */
 export function image<
   const V extends ImageValue | null = null,
@@ -177,13 +179,7 @@ export function image<
   label: string,
   value: V = null as V,
   options?: O,
-): ImageField<
-  O extends { optional: true }
-    ? ImageValue | null
-    : V extends null
-      ? ImageValue | null
-      : ImageValue
-> {
+): ImageField<O extends { optional: true } ? ImageValue | null : ImageValue> {
   return { kind: 'image', label, default: value as never, ...options };
 }
 
