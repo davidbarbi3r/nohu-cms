@@ -50,7 +50,18 @@ Exemple :
 
 ```ts
 // cms.config.ts
-import { defineCms, page, section, collection, text, textarea, richtext, image, date, list } from 'nohu-cms';
+import {
+  defineCms,
+  page,
+  section,
+  collection,
+  text,
+  textarea,
+  richtext,
+  image,
+  date,
+  list,
+} from 'nohu-cms';
 
 export default defineCms({
   admin: { title: 'Atelier Dupont', brandColor: '#2f5d50' },
@@ -58,7 +69,10 @@ export default defineCms({
     accueil: page('Accueil', '/', {
       hero: section('Haut de page', {
         title: text('Titre', 'Bienvenue', { max: 70 }),
-        photo: image('Photo', { src: '/images/hero.jpg', alt: 'Atelier vu de la rue' }),
+        photo: image('Photo', {
+          src: '/images/hero.jpg',
+          alt: 'Atelier vu de la rue',
+        }),
       }),
     }),
   },
@@ -83,6 +97,7 @@ import { getContent } from 'nohu-cms/content';
 import CmsImage from 'nohu-cms/components/CmsImage.astro';
 const content = await getContent(config);
 ---
+
 <h1>{content.accueil.hero.title}</h1>
 <CmsImage image={content.accueil.hero.photo} sizes="100vw" />
 ```
@@ -94,16 +109,16 @@ de code.
 
 Repris de `src/cms/fields.ts` de Gao Mata, étendu.
 
-| Type        | Valeur                                       | Notes |
-| ----------- | -------------------------------------------- | ----- |
-| `text`      | string                                       | `max` |
-| `textarea`  | string                                       | `max`, rendu avec `<Lines>` / `toParagraphs()` |
-| `richtext`  | HTML (string)                                | éditeur TipTap, nettoyé au build (`sanitizeRichText`) |
-| `url`       | string                                       | validé |
-| `email`     | string                                       | validé |
-| `date`      | `AAAA-MM-JJ`                                 | |
-| `image`     | `{ src, alt, width?, height?, mediaId? }`    | voir §5 |
-| `list`      | tableau d'objets de champs scalaires/`image` | `itemLabel`, `itemTitle`, `min`, `max` |
+| Type       | Valeur                                       | Notes                                                 |
+| ---------- | -------------------------------------------- | ----------------------------------------------------- |
+| `text`     | string                                       | `max`                                                 |
+| `textarea` | string                                       | `max`, rendu avec `<Lines>` / `toParagraphs()`        |
+| `richtext` | HTML (string)                                | éditeur TipTap, nettoyé au build (`sanitizeRichText`) |
+| `url`      | string                                       | validé                                                |
+| `email`    | string                                       | validé                                                |
+| `date`     | `AAAA-MM-JJ`                                 |                                                       |
+| `image`    | `{ src, alt, width?, height?, mediaId? }`    | voir §5                                               |
+| `list`     | tableau d'objets de champs scalaires/`image` | `itemLabel`, `itemTitle`, `min`, `max`                |
 
 Options communes : `help`, `optional`, `max`.
 
@@ -249,7 +264,7 @@ est refusé par le site B (audience différente).
   7. affiche la checklist restante : connecter le dépôt à Workers Builds,
      secret de build `CMS_API_TOKEN`, deploy hook puis
      `npx nohu-cms set-hook <url>` (pose le secret `DEPLOY_HOOK_URL`).
-  Toutes les valeurs de compte vont dans les fichiers du site, jamais ailleurs.
+     Toutes les valeurs de compte vont dans les fichiers du site, jamais ailleurs.
 - **`doctor`** : vérifie, avec un diagnostic en français pour chaque point :
   bindings D1/R2, migrations à jour, variables Access présentes, application
   Access couvrant `/admin` et `/api/admin` de chaque domaine avec la bonne
@@ -300,30 +315,30 @@ Il contient aussi les règles de maintenance (équivalent de la section
 
 ## 12. Reprise depuis Gao Mata
 
-| Gao Mata                                  | nohu-cms                                  |
-| ----------------------------------------- | ----------------------------------------- |
-| `src/cms/fields.ts`                       | `fields` (+ `richtext`, `date`, `image`)  |
-| `src/cms/load.ts`                         | `content` (config en paramètre, entrées)  |
-| `src/cms/workshops.ts`                    | remplacé par les collections génériques   |
-| `src/cms/publish.ts`, `worker/*`          | `worker` (routes génériques)              |
-| `src/admin/*` (sauf `Workshops.tsx`)      | `admin` ; `Workshops.tsx` → `EntryEditor` générique |
-| `scripts/dev-admin.mjs`                   | `cli dev`                                 |
-| `docs/admin.md`                           | `init` + `doctor` + guide d'installation  |
+| Gao Mata                             | nohu-cms                                            |
+| ------------------------------------ | --------------------------------------------------- |
+| `src/cms/fields.ts`                  | `fields` (+ `richtext`, `date`, `image`)            |
+| `src/cms/load.ts`                    | `content` (config en paramètre, entrées)            |
+| `src/cms/workshops.ts`               | remplacé par les collections génériques             |
+| `src/cms/publish.ts`, `worker/*`     | `worker` (routes génériques)                        |
+| `src/admin/*` (sauf `Workshops.tsx`) | `admin` ; `Workshops.tsx` → `EntryEditor` générique |
+| `scripts/dev-admin.mjs`              | `cli dev`                                           |
+| `docs/admin.md`                      | `init` + `doctor` + guide d'installation            |
 
 ## 13. Spikes (levés le 2026-10-15)
 
-| #  | Question | Résultat | Décision |
-| -- | -------- | -------- | -------- |
-| S1 | Créer un deploy hook par l'API ? | Non documenté : seul le déclenchement (`POST /workers/builds/deploy_hooks/{uuid}`) l'est. | Étape manuelle dans le tableau de bord, puis `npx nohu-cms set-hook <url>`. |
-| S2 | Jeton disponible pendant la commande de build Workers Builds ? | Non garanti par la doc (seuls `CI`, `WORKERS_CI*` sont listés). | Migrateur propre à la lib (§4 bis) via l'API REST D1 avec `CMS_API_TOKEN` (D1 Edit). |
-| S3 | `migrations_dir` dans `node_modules` ? | Rendu inutile par S2. | Pas de `migrations_dir` : la lib applique ses migrations elle-même. |
-| S4 | Application + règle Access par l'API ? | Oui : `POST /accounts/{id}/access/apps` (droit « Access: Apps and Policies Write »), domaine d'équipe via `GET /accounts/{id}/access/organizations`. | `init` le fait si un jeton est fourni, sinon affiche les étapes. |
+| #   | Question                                                       | Résultat                                                                                                                                             | Décision                                                                             |
+| --- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| S1  | Créer un deploy hook par l'API ?                               | Non documenté : seul le déclenchement (`POST /workers/builds/deploy_hooks/{uuid}`) l'est.                                                            | Étape manuelle dans le tableau de bord, puis `npx nohu-cms set-hook <url>`.          |
+| S2  | Jeton disponible pendant la commande de build Workers Builds ? | Non garanti par la doc (seuls `CI`, `WORKERS_CI*` sont listés).                                                                                      | Migrateur propre à la lib (§4 bis) via l'API REST D1 avec `CMS_API_TOKEN` (D1 Edit). |
+| S3  | `migrations_dir` dans `node_modules` ?                         | Rendu inutile par S2.                                                                                                                                | Pas de `migrations_dir` : la lib applique ses migrations elle-même.                  |
+| S4  | Application + règle Access par l'API ?                         | Oui : `POST /accounts/{id}/access/apps` (droit « Access: Apps and Policies Write »), domaine d'équipe via `GET /accounts/{id}/access/organizations`. | `init` le fait si un jeton est fourni, sinon affiche les étapes.                     |
 
 ### §4 bis — Migrateur
 
 - Les migrations sont des fichiers SQL embarqués dans le package
   (`migrations/0001_init.sql`, …), suivis dans la table `cms_migrations
-  (name TEXT PK, applied_at TEXT)`.
+(name TEXT PK, applied_at TEXT)`.
 - Exécuteurs : distant (API REST D1 `/accounts/{id}/d1/database/{db}/query`,
   jeton `CMS_API_TOKEN`) et local (`wrangler d1 execute DB --local`).
 - Le build (source `d1` ou `local`) applique les migrations en attente avant

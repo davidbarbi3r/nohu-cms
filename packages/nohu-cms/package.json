@@ -1,0 +1,81 @@
+{
+  "name": "nohu-cms",
+  "version": "0.1.0",
+  "description": "Admin de contenu pour sites Astro statiques sur Cloudflare : textes, images et articles dans D1 et R2, connexion par Cloudflare Access.",
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "astro",
+    "astro-integration",
+    "astro-component",
+    "cms",
+    "cloudflare",
+    "d1",
+    "r2",
+    "workers"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidbarbi3r/nohu-cms.git",
+    "directory": "packages/nohu-cms"
+  },
+  "bin": {
+    "nohu-cms": "./dist/cli/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./content": {
+      "types": "./dist/content/index.d.ts",
+      "import": "./dist/content/index.js"
+    },
+    "./worker": {
+      "types": "./dist/worker/index.d.ts",
+      "import": "./dist/worker/index.js"
+    },
+    "./astro": {
+      "types": "./dist/astro/index.d.ts",
+      "import": "./dist/astro/index.js"
+    },
+    "./admin": "./dist/admin/admin.js",
+    "./admin.css": "./dist/admin/admin.css",
+    "./AdminPage.astro": "./astro/AdminPage.astro",
+    "./components/*": "./components/*"
+  },
+  "files": [
+    "dist",
+    "astro",
+    "components",
+    "skills",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup && node scripts/build-admin.mjs",
+    "check": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "prepack": "npm run build"
+  },
+  "peerDependencies": {
+    "astro": ">=5"
+  },
+  "dependencies": {
+    "jose": "^6.2.12",
+    "sanitize-html": "^2.18.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261015.1",
+    "@tiptap/core": "^3.32.0",
+    "@tiptap/extension-image": "^3.32.0",
+    "@tiptap/pm": "^3.32.0",
+    "@tiptap/starter-kit": "^3.32.0",
+    "@types/node": "^26.6.5",
+    "@types/sanitize-html": "^2.16.2",
+    "astro": "^7.3.8",
+    "esbuild": "^0.28.2",
+    "preact": "^10.29.8",
+    "tsup": "^9.0.0",
+    "vitest": "^5.0.4"
+  }
+}

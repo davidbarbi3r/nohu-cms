@@ -1,0 +1,16 @@
+---
+/**
+ * Texte mis en forme (champ `richtext`). Le HTML a déjà été nettoyé au
+ * chargement par `getContent()` / `getEntries()` (liste blanche) : ne jamais
+ * passer ici du HTML qui ne vient pas de ces fonctions.
+ */
+import type { HTMLAttributes } from 'astro/types';
+
+interface Props extends HTMLAttributes<'div'> {
+  html: string;
+}
+
+const { html, ...attributes } = Astro.props;
+---
+
+<div {...attributes} set:html={html} />

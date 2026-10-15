@@ -1,0 +1,25 @@
+---
+/**
+ * Affiche un texte éditable : les retours à la ligne deviennent des <br>,
+ * et avec `linkify` les emails / téléphones deviennent des liens.
+ */
+import { toChunks } from 'nohu-cms';
+
+interface Props {
+  text: string;
+  linkify?: boolean;
+}
+
+const { text, linkify = false } = Astro.props;
+const chunks = toChunks(text, linkify);
+---
+
+{chunks.map((chunk) =>
+  chunk.type === 'break' ? (
+    <br />
+  ) : chunk.type === 'link' ? (
+    <a href={chunk.href}>{chunk.value}</a>
+  ) : (
+    chunk.value
+  ),
+)}

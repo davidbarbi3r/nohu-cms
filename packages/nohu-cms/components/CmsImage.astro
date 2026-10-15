@@ -1,0 +1,36 @@
+---
+/**
+ * Image éditable : image d'origine (`public/`) ou photo envoyée dans l'admin,
+ * avec ses variantes de largeur (`srcset`). N'affiche rien si l'image est vide.
+ */
+import type { HTMLAttributes } from 'astro/types';
+import type { ImageValue } from 'nohu-cms';
+
+interface Props extends Omit<HTMLAttributes<'img'>, 'src' | 'alt' | 'srcset'> {
+  image: ImageValue | null | undefined;
+  /** Largeur affichée, pour choisir la bonne variante (ex. `(min-width: 60rem) 50vw, 100vw`). */
+  sizes?: string;
+}
+
+const { image, sizes = '100vw', loading = 'lazy', ...attributes } = Astro.props;
+const srcset = image?.srcset?.length
+  ? [...image.srcset]
+      .sort((a, b) => a.width - b.width)
+      .map((variant) => `${variant.src} ${variant.width}w`)
+      .join(', ')
+  : undefined;
+---
+
+{image && (
+  <img
+    src={image.src}
+    alt={image.alt}
+    width={image.width}
+    height={image.height}
+    srcset={srcset}
+    sizes={srcset ? sizes : undefined}
+    loading={loading}
+    decoding="async"
+    {...attributes}
+  />
+)}
