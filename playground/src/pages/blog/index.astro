@@ -1,0 +1,27 @@
+---
+import config from '../../../cms.config';
+import { formatDate } from 'nohu-cms';
+import { getEntries, getEntryPath } from 'nohu-cms/content';
+import CmsImage from 'nohu-cms/components/CmsImage.astro';
+import Layout from '../../layouts/Layout.astro';
+
+const articles = await getEntries(config, 'articles');
+---
+
+<Layout title="Blog">
+  <h1>Blog</h1>
+  {articles.map((article) => (
+    <article>
+      <CmsImage
+        image={article.data.cover}
+        sizes="20rem"
+        style="max-width: 20rem"
+      />
+      <h2>
+        <a href={getEntryPath(config, 'articles', article)}>{article.title}</a>
+      </h2>
+      <p>{formatDate(article.publishedAt)}</p>
+      <p>{article.data.summary}</p>
+    </article>
+  ))}
+</Layout>

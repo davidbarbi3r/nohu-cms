@@ -1,0 +1,42 @@
+---
+import config from '../../cms.config';
+import { getContent, getEntries, getEntryPath } from 'nohu-cms/content';
+import CmsImage from 'nohu-cms/components/CmsImage.astro';
+import Lines from 'nohu-cms/components/Lines.astro';
+import Layout from '../layouts/Layout.astro';
+
+const { accueil } = await getContent(config);
+const articles = (await getEntries(config, 'articles')).slice(0, 3);
+---
+
+<Layout title="Accueil">
+  <h1>{accueil.hero.title}</h1>
+  <p>
+    <Lines text={accueil.hero.intro} />
+  </p>
+  <CmsImage
+    image={accueil.hero.photo}
+    sizes="(min-width: 60rem) 60rem, 100vw"
+    loading="eager"
+  />
+
+  <h2>{accueil.services.items.length} prestations</h2>
+  <ul>
+    {accueil.services.items.map((item) => (
+      <li>
+        <strong>{item.name}</strong> — {item.price}
+        {item.description && <p>{item.description}</p>}
+      </li>
+    ))}
+  </ul>
+
+  <h2>{accueil.blog.title}</h2>
+  {articles.length === 0 && <p>{accueil.blog.empty}</p>}
+  <ul>
+    {articles.map((article) => (
+      <li>
+        <a href={getEntryPath(config, 'articles', article)}>{article.title}</a>
+      </li>
+    ))}
+  </ul>
+</Layout>

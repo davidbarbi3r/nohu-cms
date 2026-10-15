@@ -2,11 +2,20 @@
 import { MIGRATIONS, MIGRATIONS_TABLE, type Migration } from '../migrations';
 import type { D1Client } from './d1';
 
+/** Migrations manquantes ; `readOnly` : sans créer la table de suivi (doctor). */
 export async function pendingMigrations(
   db: D1Client,
   migrations: Migration[] = MIGRATIONS,
+  { readOnly = false } = {},
 ): Promise<Migration[]> {
-  await db.exec(MIGRATIONS_TABLE);
+  if (readOnly) {
+    const tables = await db.query(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'cms_migrations'",
+    );
+    if (!tables.length) return migrations;
+  } else {
+    await db.exec(MIGRATIONS_TABLE);
+  }
   const rows = await db.query('SELECT name FROM cms_migrations');
   const applied = new Set(rows.map((row) => String(row.name)));
   return migrations.filter((migration) => !applied.has(migration.name));

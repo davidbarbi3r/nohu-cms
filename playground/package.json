@@ -1,0 +1,25 @@
+{
+  "name": "playground",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "check": "astro check && tsc -p worker/tsconfig.json",
+    "dev:admin": "nohu-cms dev",
+    "test:e2e": "playwright test",
+    "db:migrate:remote": "nohu-cms migrate --remote",
+    "cms:doctor": "nohu-cms doctor"
+  },
+  "dependencies": {
+    "astro": "^7.3.8",
+    "nohu-cms": "*"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@axe-core/playwright": "^4.13.0",
+    "@cloudflare/workers-types": "^5.20261015.1",
+    "@playwright/test": "^1.64.1",
+    "wrangler": "^4.151.0"
+  }
+}

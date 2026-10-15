@@ -1,0 +1,4 @@
+# Admin locale (npx nohu-cms dev). Jamais commité.
+# Email simulé : la connexion Cloudflare Access est contournée sur localhost
+# uniquement, et l'email doit figurer dans ADMIN_EMAILS (wrangler.jsonc).
+DEV_ADMIN_EMAIL=admin@example.com

@@ -86,13 +86,18 @@ export function remoteClient(
   };
 }
 
-const wrangler = (args: string[], cwd: string) =>
-  execFileSync('npx', ['wrangler', 'd1', 'execute', 'DB', '--local', ...args], {
-    cwd,
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-    maxBuffer: 64 * 1024 * 1024,
-  });
+/** Lance une commande et renvoie sa sortie (remplaçable dans les tests). */
+export type Exec = (command: string, args: string[]) => string;
+
+const runCommand =
+  (cwd: string): Exec =>
+  (command, args) =>
+    execFileSync(command, args, {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      maxBuffer: 64 * 1024 * 1024,
+    });
 
 /** Littéral SQL d'un paramètre (wrangler en local n'accepte pas de paramètres). */
 function literal(value: unknown): string {
@@ -107,14 +112,25 @@ export function inlineParams(sql: string, params: unknown[]): string {
   );
 }
 
-export function localClient(cwd = process.cwd()): D1Client {
+/**
+ * Base interrogée par wrangler : locale (`wrangler dev`), ou distante avec la
+ * connexion `wrangler login` de la personne qui lance la CLI.
+ */
+export function wranglerClient(
+  cwd = process.cwd(),
+  target: 'local' | 'remote' = 'local',
+  exec: Exec = runCommand(cwd),
+): D1Client {
+  const wrangler = (args: string[]) =>
+    exec('npx', ['wrangler', 'd1', 'execute', 'DB', `--${target}`, ...args]);
   return {
-    kind: 'local',
+    kind: target,
     async query(sql, params = []) {
-      const output = wrangler(
-        ['--json', '--command', inlineParams(sql, params)],
-        cwd,
-      );
+      const output = wrangler([
+        '--json',
+        '--command',
+        inlineParams(sql, params),
+      ]);
       const parsed = JSON.parse(output) as { results?: Row[] }[];
       return parsed[0]?.results ?? [];
     },
@@ -123,10 +139,13 @@ export function localClient(cwd = process.cwd()): D1Client {
       const file = join(dir, 'migration.sql');
       writeFileSync(file, sql);
       try {
-        wrangler(['--file', file, '--yes'], cwd);
+        wrangler(['--file', file, '--yes']);
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
     },
   };
 }
+
+export const localClient = (cwd = process.cwd()) =>
+  wranglerClient(cwd, 'local');

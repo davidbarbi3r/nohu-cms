@@ -1,0 +1,31 @@
+---
+/**
+ * Page /admin injectée par l'intégration nohu-cms. Elle est statique : la
+ * config du site y est sérialisée, l'application se charge dans le
+ * navigateur et parle à l'API /api/admin du Worker. En production, /admin et
+ * /api/admin sont protégés par Cloudflare Access.
+ */
+import config from 'virtual:nohu-cms/config';
+import 'nohu-cms/admin.css';
+
+// `<` échappé : le JSON ne peut pas fermer la balise <script>.
+const serialized = JSON.stringify(config).replace(/</g, '\\u003c');
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Espace admin | {config.admin.title}</title>
+  </head>
+  <body>
+    <div id="nohu-admin"></div>
+    <script type="application/json" id="nohu-config" set:html={serialized} />
+    <script>
+      import 'nohu-cms/admin';
+    </script>
+    <noscript>L’espace admin a besoin de JavaScript pour fonctionner.</noscript>
+  </body>
+</html>

@@ -1,0 +1,50 @@
+---
+import config from '../../cms.config';
+import { getContent } from 'nohu-cms/content';
+import Lines from 'nohu-cms/components/Lines.astro';
+
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+const { commun } = await getContent(config);
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} | {config.admin.title}</title>
+    <style is:global>
+      body {
+        margin: 0 auto;
+        max-width: 60rem;
+        padding: 1rem;
+        font-family: system-ui, sans-serif;
+        line-height: 1.6;
+      }
+      img {
+        max-width: 100%;
+        height: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a href="/">Accueil</a> · <a href="/blog">Blog</a>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer>
+      <p>
+        <Lines
+          text={`${commun.contact.email}\n${commun.contact.phone}`}
+          linkify
+        />
+      </p>
+      <a href="/admin">Espace admin</a>
+    </footer>
+  </body>
+</html>

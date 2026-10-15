@@ -33,6 +33,8 @@ export {
   type AdminOptions,
   type CmsConfig,
   type CollectionDef,
+  type CollectionName,
+  type CollectionOf,
   type Content,
   type Entry,
   type EntryData,

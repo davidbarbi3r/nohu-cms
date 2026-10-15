@@ -1,0 +1,30 @@
+---
+import config from '../../../cms.config';
+import { formatDate } from 'nohu-cms';
+import { getEntries } from 'nohu-cms/content';
+import CmsImage from 'nohu-cms/components/CmsImage.astro';
+import RichText from 'nohu-cms/components/RichText.astro';
+import Layout from '../../layouts/Layout.astro';
+
+export async function getStaticPaths() {
+  const articles = await getEntries(config, 'articles');
+  return articles.map((article) => ({
+    params: { slug: article.slug },
+    props: { article },
+  }));
+}
+
+const { article } = Astro.props;
+---
+
+<Layout title={article.title}>
+  <article>
+    <h1>{article.title}</h1>
+    <p>{formatDate(article.publishedAt)}</p>
+    <CmsImage
+      image={article.data.cover}
+      sizes="(min-width: 60rem) 60rem, 100vw"
+    />
+    <RichText html={article.data.body} class="prose" />
+  </article>
+</Layout>

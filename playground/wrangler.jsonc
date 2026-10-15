@@ -1,0 +1,43 @@
+// Worker « atelier-exemple » : site statique (dist/) + API de l'admin nohu-cms.
+// Vérifier la configuration : npx nohu-cms doctor
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "atelier-exemple",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-15",
+  "compatibility_flags": ["global_fetch_strictly_public"],
+  "routes": [
+    { "pattern": "exemple.test", "custom_domain": true },
+    { "pattern": "www.exemple.test", "custom_domain": true },
+  ],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // Le Worker ne s'exécute d'abord que pour l'API et les photos ;
+    // tout le reste est servi directement comme fichier statique.
+    "run_worker_first": ["/api/*", "/media/*"],
+  },
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "atelier-exemple-cms",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+    },
+  ],
+  "r2_buckets": [
+    { "binding": "MEDIA", "bucket_name": "atelier-exemple-media" },
+  ],
+  // Nettoyage quotidien des photos qui ne servent plus.
+  "triggers": { "crons": ["0 3 * * *"] },
+  "vars": {
+    // Seule liste des comptes autorisés dans l'admin (à garder identique à la règle Access).
+    "ADMIN_EMAILS": "admin@example.com",
+    // Domaine d'équipe Cloudflare Access (Zero Trust).
+    "ACCESS_TEAM_DOMAIN": "https://exemple.cloudflareaccess.com",
+    // « Application Audience (AUD) Tag » de l'application Access de ce site (non secret).
+    "ACCESS_AUD": "",
+    // Compte Cloudflare : lu par le build pour interroger D1.
+    "CLOUDFLARE_ACCOUNT_ID": "00000000000000000000000000000000",
+  },
+}
