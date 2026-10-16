@@ -300,6 +300,19 @@ img {
   background: var(--success);
 }
 
+.publish--neutral .publish__dot {
+  background: var(--muted);
+}
+
+.publish--error {
+  background: rgb(163 52 31 / 12%);
+  color: var(--danger);
+}
+
+.publish--error .publish__dot {
+  background: var(--danger);
+}
+
 .publish--building .publish__dot {
   background: var(--amber);
   animation: pulse 1.2s ease-in-out infinite;

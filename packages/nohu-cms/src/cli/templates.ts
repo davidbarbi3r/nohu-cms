@@ -47,8 +47,9 @@ ${routes}
     },
   ],
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "${bucketName(site.name)}" }],
-  // Nettoyage quotidien des photos qui ne servent plus.
-  "triggers": { "crons": ["0 3 * * *"] },
+  // Nettoyage quotidien des photos qui ne servent plus (0 3 * * *) ;
+  // suivi de la dernière mise en ligne, alerte si elle échoue (*/10).
+  "triggers": { "crons": ["0 3 * * *", "*/10 * * * *"] },
   "vars": {
     // Seule liste des comptes autorisés dans l'admin (à garder identique à la règle Access).
     "ADMIN_EMAILS": "${site.adminEmails.join(',')}",

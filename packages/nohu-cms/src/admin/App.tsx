@@ -2,14 +2,14 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { CmsConfig } from '../config';
 import type { StoredValue } from '../fields';
-import { BUILD_DURATION_MS, type PublishStatus } from '../protocol';
+import type { PublishStatus } from '../protocol';
+import { publishBadge } from './publish-badge';
 import { api, ApiError } from './api';
 import { ConfigContext, PreviewContext, useConfig } from './context';
 import { EntryEditor, EntryList } from './Entries';
 import { PageEditor } from './PageEditor';
 import {
   ConfirmProvider,
-  formatDateTime,
   Spinner,
   ToastProvider,
   useConfirm,
@@ -162,18 +162,15 @@ function AdminShell() {
   }, []);
 
   const [status, setStatus] = useState<PublishStatus | null>(null);
-  useEffect(() => {
+  const refreshStatus = useCallback(() => {
     api
       .publishStatus()
       .then(setStatus)
       .catch(() => undefined);
   }, []);
-  const onPublished = useCallback(() => {
-    setStatus((current) => ({
-      lastPublishBy: current?.lastPublishBy ?? email,
-      lastPublishAt: new Date().toISOString(),
-    }));
-  }, [email]);
+  useEffect(refreshStatus, [refreshStatus]);
+  /** Une publication vient d'être demandée : on suit le build lancé. */
+  const onPublished = refreshStatus;
 
   const republish = async () => {
     try {
@@ -233,7 +230,11 @@ function AdminShell() {
           <span class="brand-name">{config.admin.title}</span>
           <small>Espace admin</small>
         </a>
-        <PublishBadge status={status} onRepublish={republish} />
+        <PublishBadge
+          status={status}
+          onRepublish={republish}
+          onRefresh={refreshStatus}
+        />
         <div class="topbar__user">
           <span title={email}>{email}</span>
           <a href="/cdn-cgi/access/logout" class="link-button">
@@ -332,41 +333,38 @@ function countOverrides(
 }
 
 /** Indique si une reconstruction a été demandée il y a moins de 3 minutes. */
+/** Interrogation du Worker pendant un build en cours. */
+const POLL_MS = 10_000;
+
+/** État de la dernière mise en ligne (build Workers Builds) et « Republier ». */
 function PublishBadge({
   status,
   onRepublish,
+  onRefresh,
 }: {
   status: PublishStatus | null;
   onRepublish: () => void;
+  onRefresh: () => void;
 }) {
-  const [, setTick] = useState(0);
-  const since = status?.lastPublishAt
-    ? Date.now() - new Date(status.lastPublishAt).getTime()
-    : Infinity;
-  const building = since < BUILD_DURATION_MS;
+  const badge = status ? publishBadge(status) : null;
+  const poll = Boolean(badge?.poll);
 
-  // Rafraîchit l'affichage à la fin de la durée estimée du build.
   useEffect(() => {
-    if (!building) return;
-    const timer = window.setTimeout(
-      () => setTick((tick) => tick + 1),
-      BUILD_DURATION_MS - since + 500,
-    );
-    return () => window.clearTimeout(timer);
-  }, [building, since]);
+    if (!poll) return;
+    const timer = window.setInterval(onRefresh, POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [poll, onRefresh]);
 
-  if (!status) return <div class="publish" />;
+  if (!badge) return <div class="publish" />;
   return (
-    <div class={`publish${building ? ' publish--building' : ''}`} role="status">
+    <div
+      class={`publish publish--${badge.tone}`}
+      role="status"
+      title={badge.help}
+    >
       <span class="publish__dot" aria-hidden="true" />
-      <span class="publish__label">
-        {building
-          ? 'Mise à jour du site en cours (2 à 3 min)…'
-          : status.lastPublishAt
-            ? `Dernière publication : ${formatDateTime(status.lastPublishAt)}`
-            : 'Site publié'}
-      </span>
-      {!building && (
+      <span class="publish__label">{badge.label}</span>
+      {badge.canRepublish && (
         <button
           type="button"
           class="link-button"

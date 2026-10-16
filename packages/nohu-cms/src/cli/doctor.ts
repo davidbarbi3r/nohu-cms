@@ -134,6 +134,14 @@ export function checkFiles(cwd: string, wrangler: WranglerValues): Check[] {
         ),
   );
   checks.push(
+    raw.triggers?.crons?.includes('*/10 * * * *')
+      ? ok('Suivi des mises en ligne (cron toutes les 10 minutes)')
+      : warn(
+          'Pas de suivi des mises en ligne (cron toutes les 10 minutes)',
+          'Ajoute "*/10 * * * *" à triggers.crons : le Worker vérifie alors le dernier build et alerte s’il échoue (ALERT_WEBHOOK_URL).',
+        ),
+  );
+  checks.push(
     wrangler.domains.length
       ? ok(`Domaines : ${wrangler.domains.join(', ')}`)
       : warn(
@@ -223,6 +231,14 @@ export async function checkRemote(
             'Crée un deploy hook (Worker → Paramètres → Builds → Deploy Hooks), puis : npx nohu-cms set-hook <url>.',
           ),
     );
+    if (!secrets.includes('CMS_BUILDS_TOKEN')) {
+      checks.push(
+        warn(
+          'Secret CMS_BUILDS_TOKEN absent : l’admin ne peut pas suivre les mises en ligne',
+          'npx nohu-cms setup le crée (jeton « Workers CI Read »), ou : npx wrangler secret put CMS_BUILDS_TOKEN.',
+        ),
+      );
+    }
   } catch {
     checks.push(
       warn(

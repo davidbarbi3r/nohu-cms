@@ -15,6 +15,15 @@ export interface CmsEnv {
   DEV_ADMIN_EMAIL?: string;
   /** Secret : deploy hook Workers Builds, appelé après chaque modification. */
   DEPLOY_HOOK_URL?: string;
+  /** Compte Cloudflare (wrangler.jsonc) : lecture de l'état des builds. */
+  CLOUDFLARE_ACCOUNT_ID?: string;
+  /** Secret : jeton « Workers CI Read », pour suivre le build lancé. */
+  CMS_BUILDS_TOKEN?: string;
+  /**
+   * Secret facultatif : webhook appelé si une mise en ligne échoue (Slack,
+   * Discord, ntfy… : corps JSON avec `text` et `content`).
+   */
+  ALERT_WEBHOOK_URL?: string;
 }
 
 /** Ce que reçoit chaque route de l'API admin. */

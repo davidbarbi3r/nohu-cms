@@ -144,3 +144,48 @@ test('les images du projet ont un aperçu dans l’admin', async ({ page }) => {
   ).toBeGreaterThan(0);
   await expect(page.getByText('Ancre')).toHaveCount(0);
 });
+
+test('l’admin affiche l’échec réel de la dernière mise en ligne', async ({
+  page,
+}) => {
+  await page.route('**/api/admin/publish', (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill({
+          json: {
+            lastPublishAt: '2026-10-16T09:00:00.000Z',
+            lastPublishBy: 'admin@example.com',
+            lastSuccessAt: '2026-10-15T09:00:00.000Z',
+            build: { uuid: 'b1', state: 'failure' },
+          },
+        })
+      : route.continue(),
+  );
+  await page.goto('/admin/');
+  await expect(
+    page.getByText('La dernière mise en ligne a échoué'),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Republier' })).toBeVisible();
+});
+
+test('l’admin suit le build en cours jusqu’à la mise en ligne', async ({
+  page,
+}) => {
+  let calls = 0;
+  await page.route('**/api/admin/publish', (route) => {
+    if (route.request().method() !== 'GET') return route.continue();
+    calls += 1;
+    return route.fulfill({
+      json: {
+        lastPublishAt: new Date().toISOString(),
+        lastPublishBy: 'admin@example.com',
+        lastSuccessAt: calls > 1 ? new Date().toISOString() : '',
+        build: { uuid: 'b2', state: calls > 1 ? 'success' : 'running' },
+      },
+    });
+  });
+  await page.clock.install();
+  await page.goto('/admin/');
+  await expect(page.getByText(/Mise à jour du site en cours/)).toBeVisible();
+  await page.clock.runFor(11_000);
+  await expect(page.getByText(/^En ligne depuis le/)).toBeVisible();
+});

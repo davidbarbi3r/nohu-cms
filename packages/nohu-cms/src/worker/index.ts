@@ -11,7 +11,10 @@ import type { CmsConfig } from '../config';
 import { authenticate } from './auth';
 import type { AdminRequest, CmsEnv } from './env';
 import { fail, json } from './http';
-import { publishStatus, triggerRebuild } from './publish';
+import { checkBuild, publishStatus, triggerRebuild } from './publish';
+
+/** Cron du nettoyage quotidien des photos (wrangler.jsonc). */
+export const DAILY_CRON = '0 3 * * *';
 import { listContent, saveContent } from './routes/content';
 import {
   createEntry,
@@ -153,7 +156,14 @@ export function createCmsWorker<E extends CmsEnv = CmsEnv>(
       }
       return env.ASSETS.fetch(request);
     },
-    async scheduled(_controller, env, ctx) {
+    /**
+     * Crons de wrangler.jsonc : le build de la dernière publication est
+     * vérifié à chaque passage (alerte en cas d'échec) ; le nettoyage des
+     * photos ne tourne qu'avec le cron quotidien (DAILY_CRON).
+     */
+    async scheduled(controller, env, ctx) {
+      ctx.waitUntil(checkBuild(env, config.admin.title));
+      if (controller.cron !== DAILY_CRON) return;
       ctx.waitUntil(
         removeOrphanMedia(env).then((removed) => {
           if (removed.length) {

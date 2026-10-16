@@ -78,6 +78,10 @@ describe('init --dry-run', () => {
       '/api/*',
       '/media/*',
     ]);
+    expect(wrangler.raw?.triggers?.crons).toEqual([
+      '0 3 * * *',
+      '*/10 * * * *',
+    ]);
     expect(wrangler.databaseName).toBe('mon-site-cms');
     expect(wrangler.bucketName).toBe('mon-site-media');
 
@@ -218,6 +222,9 @@ describe('doctor', () => {
       'error',
     );
     expect(checks['Le Worker reçoit /api/* et /media/*']).toBe('ok');
+    expect(
+      checks['Suivi des mises en ligne (cron toutes les 10 minutes)'],
+    ).toBe('ok');
   });
 
   it('alerte si l’API admin répond sans connexion', async () => {
@@ -257,5 +264,32 @@ describe('doctor', () => {
         'Secret DEPLOY_HOOK_URL absent : les modifications ne seront pas mises en ligne'
       ],
     ).toBe('error');
+    expect(
+      result[
+        'Secret CMS_BUILDS_TOKEN absent : l’admin ne peut pas suivre les mises en ligne'
+      ],
+    ).toBe('warn');
+  });
+});
+
+describe('doctor : suivi des mises en ligne', () => {
+  it('signale un wrangler.jsonc sans cron de suivi', () => {
+    const dir = astroProject();
+    const source = wranglerJsonc({
+      name: 'mon-site',
+      title: 'Mon site',
+      accountId: 'a'.repeat(32),
+      domains: ['exemple.fr'],
+      adminEmails: ['a@exemple.fr'],
+      databaseId: '11111111-2222-4333-8444-555555555555',
+      teamDomain: 'https://equipe.cloudflareaccess.com',
+      aud: 'b'.repeat(64),
+      compatibilityDate: '2026-10-01',
+    }).replace(', "*/10 * * * *"', '');
+    writeFileSync(join(dir, 'wrangler.jsonc'), source);
+    const checks = levels(checkFiles(dir, readWranglerConfig(dir)));
+    expect(
+      checks['Pas de suivi des mises en ligne (cron toutes les 10 minutes)'],
+    ).toBe('warn');
   });
 });

@@ -1,5 +1,11 @@
 # Changelog
 
+## Non publié
+
+- Suivi réel des mises en ligne (#17) : état du build Workers Builds dans
+  l'admin (en cours, en ligne, échec), alerte d'échec via `ALERT_WEBHOOK_URL`
+  (cron `*/10 * * * *`), vérifications correspondantes dans `doctor`.
+
 ## 0.1.0 — non publiée
 
 Première version :

@@ -213,6 +213,21 @@ npm run dev:admin   # = nohu-cms dev
 `DEV_ADMIN_EMAIL` (`.dev.vars`, accepté uniquement sur localhost), et
 reconstruction du site à chaque enregistrement, comme en production.
 
+## Suivi des mises en ligne
+
+Après chaque enregistrement, le deploy hook renvoie l'identifiant du build
+lancé. Avec le secret `CMS_BUILDS_TOKEN` (jeton de compte « Workers CI
+Read », créé par `npx nohu-cms setup`), l'admin affiche l'état **réel** de la
+mise en ligne : en cours, en ligne depuis telle heure, ou échec (le site
+affiche alors encore la version précédente, et « Republier » est proposé).
+Sans ce jeton, l'admin estime l'état à partir de l'heure de la demande.
+
+Le cron `*/10 * * * *` du Worker vérifie aussi le dernier build : s'il a
+échoué, une alerte est envoyée **une seule fois** au webhook
+`ALERT_WEBHOOK_URL` (secret facultatif ; corps JSON avec `text` et `content`,
+compris par Slack, Discord ou ntfy). Le nettoyage des photos reste lié au
+cron quotidien `0 3 * * *`.
+
 ## Sécurité
 
 - `/admin` et `/api/admin` sont protégés par l'application Cloudflare Access

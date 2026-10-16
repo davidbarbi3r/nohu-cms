@@ -6,10 +6,23 @@ export interface PublishResult {
   message: string;
 }
 
+/** Build Workers Builds lancé par la dernière publication. */
+export interface BuildInfo {
+  uuid: string;
+  /** `unknown` : état illisible (pas de jeton de lecture, API indisponible). */
+  state: BuildState;
+}
+
+export type BuildState =
+  'pending' | 'running' | 'success' | 'failure' | 'cancelled' | 'unknown';
+
 export interface PublishStatus {
   /** Dernière reconstruction demandée (ISO), vide si jamais. */
   lastPublishAt: string;
   lastPublishBy: string;
+  /** Fin du dernier build réussi (ISO), vide si inconnue. */
+  lastSuccessAt: string;
+  build: BuildInfo | null;
 }
 
 /** Durée typique d'un build Workers Builds, pour l'indicateur de l'admin. */
