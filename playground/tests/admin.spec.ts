@@ -189,3 +189,45 @@ test('l’admin suit le build en cours jusqu’à la mise en ligne', async ({
   await page.clock.runFor(11_000);
   await expect(page.getByText(/^En ligne depuis le/)).toBeVisible();
 });
+
+test('après publication d’un nouvel article, on peut quitter sans confirmation', async ({
+  page,
+}) => {
+  await page.goto('/admin/#/collections/articles/nouveau');
+  await page
+    .getByLabel('Titre', { exact: true })
+    .fill(`Sans confirmation ${Date.now()}`);
+  await page.getByLabel('Résumé').fill('Un résumé.');
+  await page.locator('input[type=file]').first().setInputFiles(photo);
+  await page.getByLabel('Description de la photo').fill('Une photo');
+  await page.getByRole('textbox', { name: 'Texte' }).click();
+  await page.keyboard.type('Un texte.');
+  await page.getByRole('button', { name: 'Publier sur le site' }).click();
+  await expect(page.locator('.badge--large')).toHaveText('En ligne');
+
+  await page.getByRole('link', { name: 'Accueil' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Accueil', level: 1 }),
+  ).toBeVisible();
+  await expect(page.getByRole('dialog')).toBeHidden();
+
+  // Même parcours, mais en changeant d'adresse (bouton Précédent, lien direct).
+  await page.goto('/admin/#/collections/articles/nouveau');
+  await page
+    .getByLabel('Titre', { exact: true })
+    .fill(`Par l’adresse ${Date.now()}`);
+  await page.getByLabel('Résumé').fill('Un résumé.');
+  await page.locator('input[type=file]').first().setInputFiles(photo);
+  await page.getByLabel('Description de la photo').fill('Une photo');
+  await page.getByRole('textbox', { name: 'Texte' }).click();
+  await page.keyboard.type('Un texte.');
+  await page.getByRole('button', { name: 'Publier sur le site' }).click();
+  // Attendre la fin de l'enregistrement (le message « Enregistré » du premier
+  // article peut encore être affiché).
+  await expect(page.locator('.badge--large')).toHaveText('En ligne');
+  await page.goto('/admin/#/pages/accueil');
+  await expect(
+    page.getByRole('heading', { name: 'Accueil', level: 1 }),
+  ).toBeVisible();
+  await expect(page.getByRole('dialog')).toBeHidden();
+});

@@ -1,5 +1,10 @@
 # nohu-cms
 
+[![npm](https://img.shields.io/npm/v/nohu-cms)](https://www.npmjs.com/package/nohu-cms)
+[![CI](https://github.com/davidbarbi3r/nohu-cms/actions/workflows/ci.yml/badge.svg)](https://github.com/davidbarbi3r/nohu-cms/actions/workflows/ci.yml)
+
+![L'éditeur d'une page dans l'admin](https://raw.githubusercontent.com/davidbarbi3r/nohu-cms/main/docs/images/admin-page.png)
+
 Admin de contenu pour sites **Astro statiques** hébergés sur **Cloudflare** :
 textes, photos et articles modifiables par un client non technique, sans
 serveur à maintenir.

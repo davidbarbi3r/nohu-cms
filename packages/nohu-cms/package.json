@@ -4,6 +4,11 @@
   "description": "Admin de contenu pour sites Astro statiques sur Cloudflare : textes, images et articles dans D1 et R2, connexion par Cloudflare Access.",
   "type": "module",
   "license": "MIT",
+  "author": "David Barbier",
+  "homepage": "https://github.com/davidbarbi3r/nohu-cms#readme",
+  "bugs": {
+    "url": "https://github.com/davidbarbi3r/nohu-cms/issues"
+  },
   "keywords": [
     "astro",
     "astro-integration",
@@ -12,7 +17,10 @@
     "cloudflare",
     "d1",
     "r2",
-    "workers"
+    "workers",
+    "admin",
+    "headless-cms",
+    "static-site"
   ],
   "repository": {
     "type": "git",
@@ -20,7 +28,7 @@
     "directory": "packages/nohu-cms"
   },
   "bin": {
-    "nohu-cms": "./dist/cli/index.js"
+    "nohu-cms": "dist/cli/index.js"
   },
   "exports": {
     ".": {
@@ -77,5 +85,12 @@
     "preact": "^10.29.8",
     "tsup": "^9.0.0",
     "vitest": "^5.0.4"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }
