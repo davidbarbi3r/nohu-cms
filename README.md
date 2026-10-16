@@ -156,8 +156,12 @@ npm run lint && npm run check
   `cd playground && npx nohu-cms dev`, puis http://localhost:8788/admin.
 - `docs/specs` : conception.
 
-Une version est publiée sur npm par le workflow `release` quand un tag `v*`
-est poussé (la version du tag doit correspondre à celle du package).
+Publier une version : mettre à jour `version` et le CHANGELOG, pousser un tag
+`vX.Y.Z` (il doit correspondre à la version du package). Le workflow `release`
+vérifie tout puis dépose la version sur npm **en attente**, sans jeton (Trusted
+Publisher). Elle est mise en ligne une fois validée avec la double
+authentification, sur npmjs.com (« Staged Packages ») ou avec
+`npm stage approve <id>`.
 
 ## Licence
 

@@ -25,6 +25,8 @@ jobs:
       - run: npm test
       - name: La version du tag correspond au package
         run: test "v$(node -p "require('./packages/nohu-cms/package.json').version")" = "$GITHUB_REF_NAME"
-      - run: npm publish --workspace nohu-cms --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # Publication sans jeton (Trusted Publisher npm, OIDC) : la version est
+      # déposée en attente, puis validée avec la 2FA sur npmjs.com
+      # (Staged Packages) ou par `npm stage approve <id>`.
+      - run: npm install -g npm@11.21.1
+      - run: npm stage publish --workspace nohu-cms --provenance --access public
