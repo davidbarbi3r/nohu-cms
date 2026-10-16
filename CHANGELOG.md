@@ -5,6 +5,12 @@
 - Suivi réel des mises en ligne (#17) : état du build Workers Builds dans
   l'admin (en cours, en ligne, échec), alerte d'échec via `ALERT_WEBHOOK_URL`
   (cron `*/10 * * * *`), vérifications correspondantes dans `doctor`.
+- `nohu-cms setup` (#16) : mise en service Cloudflare avec un seul jeton
+  (D1, R2, Access et sa règle, jetons et secrets de build et de suivi, branche
+  de production sur demande), relançable sans risque ; `init` complète un
+  `wrangler.jsonc` existant au lieu de s'arrêter.
+- `nohu-cms dev` : le site reconstruit remplace l'ancien sans trou (une page
+  rechargée pendant la reconstruction n'est plus introuvable).
 
 ## 0.1.0 — non publiée
 

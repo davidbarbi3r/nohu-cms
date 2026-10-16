@@ -2,6 +2,7 @@
  * CLI nohu-cms : installation et maintenance d'un site.
  *
  *   npx nohu-cms init        installe nohu-cms dans un projet Astro existant
+ *   npx nohu-cms setup       met en service Cloudflare (Access, secrets, builds)
  *   npx nohu-cms doctor      vérifie la configuration (locale et Cloudflare)
  *   npx nohu-cms dev         admin en local (D1/R2 locales, rebuild auto)
  *   npx nohu-cms migrate     applique les migrations (--local ou --remote)
@@ -17,11 +18,14 @@ import { migrate } from '../content/migrate';
 import { dev } from './dev';
 import { doctor } from './doctor';
 import { init } from './init';
+import { setupCommand } from './setup';
 
 const HELP = `nohu-cms — admin de contenu pour sites Astro sur Cloudflare
 
 Commandes :
   init [--dry-run]          installe nohu-cms dans le projet Astro courant
+  setup [--production-branch <b>]
+                            met en service Cloudflare avec CLOUDFLARE_API_TOKEN
   doctor                    vérifie la configuration du site
   dev [--port 8788]         admin en local sur http://localhost:8788/admin
   migrate [--local|--remote] applique les migrations de la base D1
@@ -42,6 +46,9 @@ async function main(argv: string[]) {
   switch (command) {
     case 'init':
       return init({ dryRun: args.includes('--dry-run') });
+    case 'setup':
+      process.exitCode = await setupCommand(args, process.env);
+      return;
     case 'doctor':
       return doctor();
     case 'dev':

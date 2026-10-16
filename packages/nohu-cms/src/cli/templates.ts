@@ -1,4 +1,5 @@
 /** Fichiers écrits par `nohu-cms init` dans le projet du site. */
+import type { WranglerFile } from '../content/wrangler';
 
 export interface SiteSettings {
   /** Nom du Worker et préfixe des ressources (minuscules, tirets). */
@@ -186,4 +187,73 @@ export function accessApplication(site: SiteSettings) {
       },
     ],
   };
+}
+
+/**
+ * Complète la config d'un Worker existant pour nohu-cms, sans toucher à ce
+ * qui y est déjà (nom, date de compatibilité, routes, variables…).
+ */
+export function mergeWrangler(
+  existing: WranglerFile,
+  site: SiteSettings,
+): WranglerFile {
+  const merged: WranglerFile = { ...existing };
+  merged.main ??= 'worker/index.ts';
+  merged.compatibility_date ??= site.compatibilityDate;
+  if (!merged.routes?.length) {
+    merged.routes = site.domains.map((pattern) => ({
+      pattern,
+      custom_domain: true,
+    }));
+  }
+  const first = merged.assets?.run_worker_first;
+  merged.assets = {
+    directory: './dist',
+    binding: 'ASSETS',
+    ...merged.assets,
+    run_worker_first:
+      first === true
+        ? true
+        : [
+            ...new Set([
+              ...(Array.isArray(first) ? first : []),
+              '/api/*',
+              '/media/*',
+            ]),
+          ],
+  };
+  if (!merged.d1_databases?.some((db) => db.binding === 'DB')) {
+    merged.d1_databases = [
+      ...(merged.d1_databases ?? []),
+      {
+        binding: 'DB',
+        database_name: databaseName(site.name),
+        database_id: site.databaseId,
+      },
+    ];
+  }
+  if (!merged.r2_buckets?.some((bucket) => bucket.binding === 'MEDIA')) {
+    merged.r2_buckets = [
+      ...(merged.r2_buckets ?? []),
+      { binding: 'MEDIA', bucket_name: bucketName(site.name) },
+    ];
+  }
+  merged.triggers = {
+    ...merged.triggers,
+    crons: [
+      ...new Set([
+        ...(merged.triggers?.crons ?? []),
+        '0 3 * * *',
+        '*/10 * * * *',
+      ]),
+    ],
+  };
+  merged.vars = {
+    ADMIN_EMAILS: site.adminEmails.join(','),
+    ACCESS_TEAM_DOMAIN: site.teamDomain,
+    ACCESS_AUD: site.aud,
+    CLOUDFLARE_ACCOUNT_ID: site.accountId,
+    ...merged.vars,
+  };
+  return merged;
 }

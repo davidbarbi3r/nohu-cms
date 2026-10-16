@@ -52,6 +52,34 @@ export function readDevVars(cwd: string): string[] {
     .map((line) => line.replace('=', ':'));
 }
 
+/**
+ * Remplace le contenu de `dist` par celui de `next` sans trou : la nouvelle
+ * version est d'abord copiée par-dessus, puis seuls les fichiers périmés
+ * sont retirés. Une page rechargée pendant la reconstruction existe donc
+ * toujours (ancienne ou nouvelle version).
+ */
+export function replaceDir(
+  next: string,
+  dist: string,
+  hooks: { onRemove?: (path: string) => void } = {},
+) {
+  cpSync(next, dist, { recursive: true, force: true });
+  const prune = (relative: string) => {
+    for (const entry of readdirSync(join(dist, relative), {
+      withFileTypes: true,
+    })) {
+      const path = join(relative, entry.name);
+      if (!existsSync(join(next, path))) {
+        hooks.onRemove?.(path);
+        rmSync(join(dist, path), { recursive: true, force: true });
+      } else if (entry.isDirectory()) {
+        prune(path);
+      }
+    }
+  };
+  prune('');
+}
+
 export async function dev({ port, cwd = process.cwd() }: DevOptions) {
   const hookPort = port + 2;
   const env = { ...process.env, CMS_SOURCE: 'local' };
@@ -82,11 +110,7 @@ export async function dev({ port, cwd = process.cwd() }: DevOptions) {
         cwd,
         env: { ...env, NOHU_CMS_OUT_DIR: NEXT_DIR },
       });
-      const dist = join(cwd, 'dist');
-      for (const entry of readdirSync(dist)) {
-        rmSync(join(dist, entry), { recursive: true, force: true });
-      }
-      cpSync(join(cwd, NEXT_DIR), dist, { recursive: true });
+      replaceDir(join(cwd, NEXT_DIR), join(cwd, 'dist'));
       console.info(`[nohu-cms] Site à jour → http://localhost:${port}/admin`);
     } catch (error) {
       console.error('[nohu-cms] Échec du build :', (error as Error).message);

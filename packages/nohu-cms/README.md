@@ -34,16 +34,28 @@ npx nohu-cms init
 ```
 
 `init` pose quelques questions (nom, domaines, emails des admins), crée la base
-D1 et le stockage R2, l'application Access si tu fournis un jeton API, écrit
-les fichiers du site, puis affiche les étapes restantes du tableau de bord
-Cloudflare :
+D1 et le stockage R2, écrit les fichiers du site (ou **complète un
+`wrangler.jsonc` existant**, en gardant une copie de l'original), puis :
 
-1. connecter le dépôt Git au Worker (Workers Builds : `npm run build`, puis
-   `npx wrangler deploy`) ;
-2. secret de build `CMS_API_TOKEN` : jeton API avec seulement « Compte → D1 →
-   Edit » (le build lit la base et applique les migrations) ;
-3. après le premier déploiement, créer un deploy hook et
-   `npx nohu-cms set-hook <url>` ;
+1. connecte le dépôt Git au Worker si ce n'est pas fait (Workers Builds :
+   build, puis `npx wrangler deploy`) ;
+2. termine la mise en service avec **un seul jeton API** :
+
+   ```bash
+   CLOUDFLARE_API_TOKEN=<jeton> npx nohu-cms setup [--production-branch main]
+   ```
+
+   `setup` (relançable sans risque : il ne refait que ce qui manque) crée ou
+   vérifie la base D1 et ses tables, le stockage R2, l'application Cloudflare
+   Access et sa règle (= `ADMIN_EMAILS`), les jetons du build (`CMS_API_TOKEN`,
+   D1 Write) et du suivi des mises en ligne (`CMS_BUILDS_TOKEN`, Workers CI
+   Read), et signale la branche de production (il ne la change qu'avec
+   `--production-branch`, puisque c'est ce qui met le site en ligne). Sans
+   jeton, la commande liste les droits à lui donner. Aucun secret n'est
+   affiché ni écrit sur disque ;
+
+3. crée le deploy hook dans le tableau de bord (Cloudflare n'a pas d'API pour
+   ça), puis `npx nohu-cms set-hook <url>` ;
 4. `npx nohu-cms doctor` pour tout vérifier.
 
 Avec Claude Code, `npx nohu-cms skill` installe le skill **nohu-cms-setup**,

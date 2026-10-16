@@ -37,11 +37,16 @@ migrations, puis affiche les **étapes restantes** (Access si pas de jeton,
 connexion du dépôt à Workers Builds, secret de build `CMS_API_TOKEN`, deploy
 hook). Recopier ces étapes à l'utilisateur sous forme de checklist.
 
-Si `wrangler.jsonc` existe déjà (site déjà sur Cloudflare), `init` s'arrête :
-ajouter alors à la main les blocs `d1_databases` (binding `DB`), `r2_buckets`
-(binding `MEDIA`), `assets.run_worker_first: ["/api/*", "/media/*"]`,
-`triggers.crons` et les `vars` (`ADMIN_EMAILS`, `ACCESS_TEAM_DOMAIN`,
-`ACCESS_AUD`, `CLOUDFLARE_ACCOUNT_ID`), en gardant ce qui existe.
+Si `wrangler.jsonc` existe déjà (site déjà sur Cloudflare), `init` le
+complète (copie de l'original : `wrangler.jsonc.avant-nohu-cms`) et signale un
+point d'entrée Worker existant à adapter avec `createCmsWorker(config, { fetch })`.
+
+Ensuite, demander à l'utilisateur un jeton API (la commande sans jeton liste
+les droits) et lui faire lancer `! CLOUDFLARE_API_TOKEN=<jeton> npx nohu-cms
+setup` : Access, D1, R2, secrets de build et de suivi. Ne jamais lui demander
+de coller le jeton dans la conversation. Ne passer `--production-branch` que
+si l'utilisateur a confirmé la mise en ligne. Le deploy hook reste à créer
+dans le tableau de bord, puis `npx nohu-cms set-hook <url>`.
 
 ## 3. Rendre le contenu modifiable
 

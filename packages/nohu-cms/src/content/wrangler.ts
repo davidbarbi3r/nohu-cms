@@ -6,6 +6,7 @@ import { parseJsonc } from './jsonc';
 export interface WranglerFile {
   name?: string;
   main?: string;
+  compatibility_date?: string;
   account_id?: string;
   routes?: ({ pattern: string; custom_domain?: boolean } | string)[];
   assets?: {

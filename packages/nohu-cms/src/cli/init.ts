@@ -9,6 +9,7 @@
 import { execFileSync } from 'node:child_process';
 import {
   appendFileSync,
+  copyFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -18,7 +19,9 @@ import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { slugify } from '../config';
 import { wranglerClient, type Exec } from '../content/d1';
+import { parseJsonc } from '../content/jsonc';
 import { migrate } from '../content/migrate';
+import type { WranglerFile } from '../content/wrangler';
 import {
   accessApplication,
   addIntegration,
@@ -26,6 +29,7 @@ import {
   cmsConfig,
   databaseName,
   devVars,
+  mergeWrangler,
   workerIndex,
   workerTsconfig,
   wranglerJsonc,
@@ -169,11 +173,11 @@ async function run(cwd: string, deps: InitDeps, dryRun: boolean) {
       'Lance cette commande à la racine d’un projet Astro (package.json et astro.config.* introuvables).',
     );
   }
-  if (existsSync(join(cwd, 'wrangler.jsonc'))) {
-    throw new Error(
-      'wrangler.jsonc existe déjà : nohu-cms init s’arrête pour ne rien écraser. Lance « npx nohu-cms doctor » pour vérifier la configuration existante.',
-    );
-  }
+  // Site déjà sur Cloudflare : sa config est complétée, pas remplacée.
+  const wranglerPath = join(cwd, 'wrangler.jsonc');
+  const existing = existsSync(wranglerPath)
+    ? (parseJsonc(readFileSync(wranglerPath, 'utf8')) as WranglerFile)
+    : null;
   log(dryRun ? '\nnohu-cms init (simulation)\n' : '\nnohu-cms init\n');
 
   // 2. Compte Cloudflare
@@ -210,7 +214,7 @@ async function run(cwd: string, deps: InitDeps, dryRun: boolean) {
   const name = slugify(
     await deps.ask(
       'Nom technique du Worker (minuscules et tirets)',
-      slugify(packageName || title),
+      existing?.name || slugify(packageName || title),
     ),
   );
   const domains = list(
@@ -313,10 +317,31 @@ async function run(cwd: string, deps: InitDeps, dryRun: boolean) {
     writeFileSync(path, content);
     log(`• ${file} écrit.`);
   };
-  write('wrangler.jsonc', wranglerJsonc(site));
+  if (existing) {
+    const backup = 'wrangler.jsonc.avant-nohu-cms';
+    copyFileSync(wranglerPath, join(cwd, backup));
+    writeFileSync(
+      wranglerPath,
+      `// Complété par nohu-cms init (ancienne version : ${backup}).\n// Vérifier la configuration : npx nohu-cms doctor\n${JSON.stringify(mergeWrangler(existing, site), null, 2)}\n`,
+    );
+    log(`• wrangler.jsonc complété (copie de l’original : ${backup}).`);
+  } else {
+    write('wrangler.jsonc', wranglerJsonc(site));
+  }
+  const customMain =
+    existing?.main && existing.main !== 'worker/index.ts'
+      ? existing.main
+      : null;
+  if (customMain) {
+    todo.push(
+      `Ton Worker ${customMain} existe déjà : fais-lui exporter createCmsWorker(config, { fetch: ton gestionnaire actuel }) (import depuis nohu-cms/worker), pour ajouter l’API de l’admin sans perdre tes routes.`,
+    );
+  }
   write('cms.config.ts', cmsConfig(title));
-  write('worker/index.ts', workerIndex);
-  write('worker/tsconfig.json', workerTsconfig);
+  if (!customMain) {
+    write('worker/index.ts', workerIndex);
+    write('worker/tsconfig.json', workerTsconfig);
+  }
   write('.dev.vars', devVars(adminEmails[0]));
   write('.dev.vars.example', devVars(adminEmails[0]));
 
@@ -374,8 +399,8 @@ async function run(cwd: string, deps: InitDeps, dryRun: boolean) {
       '  Commande de build : npm run build ; commande de déploiement : npx wrangler deploy.',
     ].join('\n'),
     [
-      `Créer un jeton API (Mon profil → Jetons d’API) avec seulement « Compte → D1 → Edit », et l’ajouter dans Worker → Paramètres → Builds → Variables et secrets de build, sous le nom CMS_API_TOKEN.`,
-      '  (Le build lit la base et applique les migrations de nohu-cms.)',
+      'Terminer la mise en service Cloudflare (Access, secrets CMS_API_TOKEN et CMS_BUILDS_TOKEN, branche de production) :',
+      '  CLOUDFLARE_API_TOKEN=<jeton> npx nohu-cms setup   (sans jeton, la commande liste les droits nécessaires)',
     ].join('\n'),
     [
       'Après le premier déploiement : Worker → Paramètres → Builds → Deploy Hooks → créer un hook sur la branche principale, puis :',

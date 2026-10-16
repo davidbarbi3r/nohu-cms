@@ -104,10 +104,68 @@ describe('init --dry-run', () => {
     expect(pkg.scripts['dev:admin']).toBe('nohu-cms dev');
     expect(todo.join('\n')).toContain('Cloudflare Access');
     expect(todo.join('\n')).toContain('CMS_API_TOKEN');
+  });
 
-    await expect(
-      init({ dryRun: true, cwd: dir, deps: { log: () => {} } }),
-    ).rejects.toThrow(/wrangler.jsonc existe déjà/);
+  it('complète un wrangler.jsonc existant sans perdre ses réglages', async () => {
+    const dir = astroProject();
+    const original = `// Site déjà sur Cloudflare
+{
+  "name": "site-existant",
+  "compatibility_date": "2026-09-02",
+  "routes": [{ "pattern": "exemple.fr", "custom_domain": true }],
+  "assets": { "directory": "./dist" },
+  "vars": { "PLAUSIBLE": "oui" },
+}
+`;
+    writeFileSync(join(dir, 'wrangler.jsonc'), original);
+    const { todo } = await init({
+      dryRun: true,
+      cwd: dir,
+      deps: {
+        ask: answers('Mon Site', '', 'exemple.fr', 'marie@exemple.fr'),
+        log: () => {},
+      },
+    });
+    const wrangler = readWranglerConfig(dir);
+    expect(wrangler.name).toBe('site-existant');
+    expect(wrangler.raw?.compatibility_date).toBe('2026-09-02');
+    expect(wrangler.raw?.vars?.PLAUSIBLE).toBe('oui');
+    expect(wrangler.raw?.main).toBe('worker/index.ts');
+    expect(wrangler.raw?.assets).toMatchObject({
+      directory: './dist',
+      binding: 'ASSETS',
+      run_worker_first: ['/api/*', '/media/*'],
+    });
+    expect(wrangler.databaseName).toBe('site-existant-cms');
+    expect(wrangler.bucketName).toBe('site-existant-media');
+    expect(wrangler.raw?.triggers?.crons).toEqual([
+      '0 3 * * *',
+      '*/10 * * * *',
+    ]);
+    expect(wrangler.adminEmails).toBe('marie@exemple.fr');
+    expect(
+      readFileSync(join(dir, 'wrangler.jsonc.avant-nohu-cms'), 'utf8'),
+    ).toBe(original);
+    expect(todo.join('\n')).not.toMatch(/point d’entrée/);
+  });
+
+  it('signale un point d’entrée Worker existant au lieu de l’écraser', async () => {
+    const dir = astroProject();
+    writeFileSync(
+      join(dir, 'wrangler.jsonc'),
+      '{ "name": "site", "main": "src/worker.ts", "routes": [{ "pattern": "exemple.fr", "custom_domain": true }] }',
+    );
+    const { todo } = await init({
+      dryRun: true,
+      cwd: dir,
+      deps: {
+        ask: answers('Site', '', 'exemple.fr', 'a@exemple.fr'),
+        log: () => {},
+      },
+    });
+    expect(readWranglerConfig(dir).raw?.main).toBe('src/worker.ts');
+    expect(todo.join('\n')).toMatch(/src\/worker\.ts/);
+    expect(todo.join('\n')).toMatch(/createCmsWorker/);
   });
 
   it('crée D1, R2 et l’application Access avec un jeton', async () => {
