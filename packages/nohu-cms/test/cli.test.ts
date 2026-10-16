@@ -328,6 +328,38 @@ describe('doctor', () => {
       ],
     ).toBe('warn');
   });
+
+  it('accepte un domaine redirigé vers un autre domaine du site', async () => {
+    const checks = await checkRemote(
+      { domains: ['exemple.fr', 'www.exemple.fr'] },
+      {
+        db: {
+          kind: 'remote',
+          query: async () => [],
+          exec: async () => {},
+        },
+        secrets: () => [],
+        fetch: (async (url: string) =>
+          url.startsWith('https://exemple.fr')
+            ? new Response(null, {
+                status: 301,
+                headers: { location: 'https://www.exemple.fr/api/admin/me' },
+              })
+            : new Response(null, {
+                status: 302,
+                headers: {
+                  location:
+                    'https://mon-equipe.cloudflareaccess.com/cdn-cgi/access/login',
+                },
+              })) as typeof fetch,
+      },
+    );
+    const result = levels(checks);
+    expect(result['exemple.fr redirige vers www.exemple.fr']).toBe('ok');
+    expect(
+      result['www.exemple.fr/api/admin protégé par Cloudflare Access'],
+    ).toBe('ok');
+  });
 });
 
 describe('doctor : suivi des mises en ligne', () => {

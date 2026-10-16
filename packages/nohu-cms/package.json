@@ -1,6 +1,6 @@
 {
   "name": "nohu-cms",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Admin de contenu pour sites Astro statiques sur Cloudflare : textes, images et articles dans D1 et R2, connexion par Cloudflare Access.",
   "type": "module",
   "license": "MIT",

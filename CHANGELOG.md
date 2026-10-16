@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1 — 2026-10-16
+
+- `doctor` : un domaine redirigé vers un autre domaine du site (ex.
+  `exemple.fr` → `www.exemple.fr`) n'est plus signalé comme « sans passer par
+  Access ».
+- Publication des versions sans jeton npm (Trusted Publisher, validation avec
+  la double authentification).
+
 ## 0.1.0 — 2026-10-16
 
 Première version publiée :

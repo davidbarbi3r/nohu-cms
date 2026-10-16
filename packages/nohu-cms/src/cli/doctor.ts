@@ -254,6 +254,9 @@ export async function checkRemote(
         redirect: 'manual',
       });
       const location = response.headers.get('location') ?? '';
+      // Redirection vers un autre domaine du site (ex. exemple.fr → www) :
+      // c'est ce domaine-là qui est vérifié.
+      const target = URL.canParse(location) ? new URL(location).hostname : '';
       if (response.status === 200) {
         checks.push(
           error(
@@ -266,6 +269,12 @@ export async function checkRemote(
         location.includes('cloudflareaccess.com')
       ) {
         checks.push(ok(`${domain}/api/admin protégé par Cloudflare Access`));
+      } else if (
+        [301, 302, 303, 307, 308].includes(response.status) &&
+        target !== domain &&
+        wrangler.domains.includes(target)
+      ) {
+        checks.push(ok(`${domain} redirige vers ${target}`));
       } else {
         checks.push(
           warn(
