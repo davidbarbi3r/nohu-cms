@@ -230,6 +230,139 @@ describe('init --dry-run', () => {
     );
     expect(wrangler.accessAud).toBe('a'.repeat(64));
   });
+
+  const accessFetch = (async (url: string) => {
+    const result = url.endsWith('/organizations')
+      ? { auth_domain: 'mon-equipe.cloudflareaccess.com' }
+      : { aud: 'a'.repeat(64) };
+    return Response.json({ success: true, result });
+  }) as typeof fetch;
+
+  function wranglerExec(
+    calls: string[],
+    options: {
+      databases?: { name: string; uuid: string }[];
+      onCreate?: (attempt: number) => string;
+    } = {},
+  ) {
+    let creates = 0;
+    return (_command: string, args: string[]) => {
+      calls.push(args.join(' '));
+      if (args[1] === 'whoami')
+        return '│ Mon compte │ 0123456789abcdef0123456789abcdef │';
+      if (args[1] === 'd1' && args[2] === 'list') {
+        return JSON.stringify(options.databases ?? []);
+      }
+      if (args[2] === 'create' && args[1] === 'd1') {
+        creates += 1;
+        if (options.onCreate) return options.onCreate(creates);
+        return '"database_id": "11111111-2222-4333-8444-555555555555"';
+      }
+      if (args[1] === 'd1' && args[2] === 'execute') {
+        return args.includes('--json') ? '[{"results": []}]' : '';
+      }
+      return '';
+    };
+  }
+
+  const EXISTING_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+  const NEW_ID = '11111111-2222-4333-8444-555555555555';
+
+  it('propose de remplacer une base D1 déjà créée', async () => {
+    const dir = astroProject();
+    const calls: string[] = [];
+    await init({
+      cwd: dir,
+      deps: {
+        ask: answers(
+          'Mon Site',
+          'mon-site',
+          'exemple.fr',
+          'marie@exemple.fr',
+          'jeton',
+          'oui',
+        ),
+        exec: wranglerExec(calls, {
+          databases: [{ name: 'mon-site-cms', uuid: EXISTING_ID }],
+        }),
+        fetch: accessFetch,
+        log: () => {},
+      },
+    });
+    const deleted = calls.indexOf(
+      'wrangler d1 delete mon-site-cms --skip-confirmation',
+    );
+    const created = calls.indexOf('wrangler d1 create mon-site-cms');
+    expect(deleted).toBeGreaterThan(-1);
+    expect(created).toBeGreaterThan(deleted);
+    expect(readWranglerConfig(dir).databaseId).toBe(NEW_ID);
+  });
+
+  it('conserve la base D1 existante sans oui explicite', async () => {
+    const dir = astroProject();
+    const calls: string[] = [];
+    await init({
+      cwd: dir,
+      deps: {
+        ask: answers(
+          'Mon Site',
+          'mon-site',
+          'exemple.fr',
+          'marie@exemple.fr',
+          'jeton',
+          '',
+        ),
+        exec: wranglerExec(calls, {
+          databases: [{ name: 'mon-site-cms', uuid: EXISTING_ID }],
+        }),
+        fetch: accessFetch,
+        log: () => {},
+      },
+    });
+    expect(calls).not.toContain(
+      'wrangler d1 delete mon-site-cms --skip-confirmation',
+    );
+    expect(calls).not.toContain('wrangler d1 create mon-site-cms');
+    expect(calls).toContain('wrangler r2 bucket create mon-site-media');
+    expect(readWranglerConfig(dir).databaseId).toBe(EXISTING_ID);
+  });
+
+  it('propose le remplacement quand la création répond que la base existe', async () => {
+    const dir = astroProject();
+    const calls: string[] = [];
+    await init({
+      cwd: dir,
+      deps: {
+        ask: answers(
+          'Mon Site',
+          'mon-site',
+          'exemple.fr',
+          'marie@exemple.fr',
+          'jeton',
+          'oui',
+        ),
+        exec: wranglerExec(calls, {
+          onCreate: (attempt) => {
+            if (attempt === 1) {
+              const error = new Error('Command failed: npx wrangler d1 create');
+              Object.assign(error, {
+                stderr:
+                  '✘ [ERROR] A database with that name already exists\n\n[code: 7502]',
+              });
+              throw error;
+            }
+            return `"database_id": "${NEW_ID}"`;
+          },
+        }),
+        fetch: accessFetch,
+        log: () => {},
+      },
+    });
+    expect(calls).toContain(
+      'wrangler d1 delete mon-site-cms --skip-confirmation',
+    );
+    expect(readWranglerConfig(dir).databaseId).toBe(NEW_ID);
+  });
 });
 
 describe('templates', () => {
