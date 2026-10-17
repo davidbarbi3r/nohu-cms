@@ -147,6 +147,147 @@ async function cloudflare<T>(
   return payload.result;
 }
 
+class DatabaseAlreadyExists extends Error {}
+
+function commandOutput(error: unknown): string {
+  if (!error || typeof error !== 'object') return String(error);
+  const failed = error as {
+    stdout?: unknown;
+    stderr?: unknown;
+    message?: unknown;
+  };
+  const text = [failed.stdout, failed.stderr]
+    .map((part) =>
+      typeof part === 'string'
+        ? part
+        : part instanceof Uint8Array
+          ? new TextDecoder().decode(part)
+          : '',
+    )
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+  return text || String(failed.message ?? error);
+}
+
+/** Base déjà créée sous ce nom, ou `null` si la liste est vide ou illisible. */
+function lookupDatabase(
+  deps: InitDeps,
+  dbName: string,
+): { id: string | null } | null {
+  let output: string;
+  try {
+    output = deps.exec('npx', ['wrangler', 'd1', 'list', '--json']);
+  } catch {
+    return null;
+  }
+  const start = output.indexOf('[');
+  const end = output.lastIndexOf(']');
+  if (start !== -1 && end > start) {
+    try {
+      const parsed = JSON.parse(output.slice(start, end + 1)) as unknown;
+      if (Array.isArray(parsed)) {
+        const found = parsed.find(
+          (item) =>
+            !!item &&
+            typeof item === 'object' &&
+            (item as { name?: unknown }).name === dbName,
+        ) as { uuid?: unknown } | undefined;
+        if (!found) return null;
+        return { id: typeof found.uuid === 'string' ? found.uuid : null };
+      }
+    } catch {
+      // Wrangler ancien : tableau texte plutôt que JSON.
+    }
+  }
+  const line = output.split('\n').find((row) => row.includes(dbName));
+  if (!line) return null;
+  return { id: line.match(UUID)?.[0] ?? null };
+}
+
+function createDatabase(deps: InitDeps, dbName: string): string {
+  deps.log(`• Création de la base D1 « ${dbName} »…`);
+  let created: string;
+  try {
+    created = deps.exec('npx', ['wrangler', 'd1', 'create', dbName]);
+  } catch (error) {
+    const detail = commandOutput(error);
+    if (/already exists|code:\s*7502/i.test(detail)) {
+      throw new DatabaseAlreadyExists(detail);
+    }
+    throw new Error(
+      `Création de la base D1 « ${dbName} » impossible.\n${detail}`,
+    );
+  }
+  const id = created.match(UUID)?.[0];
+  if (!id) {
+    throw new Error(
+      `Identifiant de la base introuvable dans la réponse de wrangler :\n${created}`,
+    );
+  }
+  return id;
+}
+
+async function replaceOrKeep(
+  deps: InitDeps,
+  dbName: string,
+  id: string | null,
+): Promise<string> {
+  const answer = await deps.ask(
+    `La base D1 « ${dbName} » existe déjà. La supprimer et la remplacer par une base neuve ? Ses données seront perdues. Réponds oui ou non`,
+    'non',
+  );
+  if (!/^(oui|yes|y)$/i.test(answer.trim())) {
+    if (!id) {
+      throw new Error(
+        `La base D1 « ${dbName} » existe déjà et son identifiant est introuvable. Relance init et réponds oui pour la remplacer, ou reporte database_id depuis « npx wrangler d1 list ».`,
+      );
+    }
+    deps.log(`• Base D1 « ${dbName} » conservée.`);
+    return id;
+  }
+  deps.log(`• Suppression de la base D1 « ${dbName} »…`);
+  try {
+    deps.exec('npx', [
+      'wrangler',
+      'd1',
+      'delete',
+      dbName,
+      '--skip-confirmation',
+    ]);
+  } catch (error) {
+    throw new Error(
+      `Suppression de la base D1 « ${dbName} » impossible.\n${commandOutput(error)}`,
+    );
+  }
+  try {
+    return createDatabase(deps, dbName);
+  } catch (error) {
+    if (error instanceof DatabaseAlreadyExists) {
+      throw new Error(
+        `La base D1 « ${dbName} » existe encore après la suppression.\n${error.message}`,
+      );
+    }
+    throw error;
+  }
+}
+
+async function provisionDatabase(
+  deps: InitDeps,
+  workerName: string,
+): Promise<string> {
+  const dbName = databaseName(workerName);
+  const existing = lookupDatabase(deps, dbName);
+  if (existing) return replaceOrKeep(deps, dbName, existing.id);
+  try {
+    return createDatabase(deps, dbName);
+  } catch (error) {
+    if (!(error instanceof DatabaseAlreadyExists)) throw error;
+    const again = lookupDatabase(deps, dbName);
+    return replaceOrKeep(deps, dbName, again?.id ?? null);
+  }
+}
+
 export async function init(options: InitOptions = {}) {
   const cwd = options.cwd ?? process.cwd();
   const deps = { ...defaultDeps(cwd), ...options.deps };
@@ -244,35 +385,24 @@ async function run(cwd: string, deps: InitDeps, dryRun: boolean) {
       .slice(0, 10),
   };
 
-  // 4. Base D1 et stockage R2
-  if (dryRun) {
-    log(`• créerait la base D1 « ${databaseName(name)} »`);
-    log(`• créerait le stockage R2 « ${bucketName(name)} »`);
-  } else {
-    log(`• Création de la base D1 « ${databaseName(name)} »…`);
-    const created = deps.exec('npx', [
-      'wrangler',
-      'd1',
-      'create',
-      databaseName(name),
-    ]);
-    const id = created.match(UUID)?.[0];
-    if (!id) {
-      throw new Error(
-        `Identifiant de la base introuvable dans la réponse de wrangler :\n${created}`,
-      );
-    }
-    site.databaseId = id;
-    log(`• Création du stockage R2 « ${bucketName(name)} »…`);
-    deps.exec('npx', ['wrangler', 'r2', 'bucket', 'create', bucketName(name)]);
-  }
-
-  // 5. Cloudflare Access
+  // 4. Jeton Access, puis base D1 et stockage R2.
+  // Le jeton passe avant la base : une base déjà là pose une question de
+  // remplacement ensuite, qui ne doit pas consommer le jeton d'un pipe.
   const token = dryRun
     ? ''
     : await deps.ask(
         'Jeton API Cloudflare avec le droit « Access: Apps and Policies Edit » pour créer la protection de /admin (Entrée pour le faire à la main)',
       );
+  if (dryRun) {
+    log(`• créerait la base D1 « ${databaseName(name)} »`);
+    log(`• créerait le stockage R2 « ${bucketName(name)} »`);
+  } else {
+    site.databaseId = await provisionDatabase(deps, name);
+    log(`• Création du stockage R2 « ${bucketName(name)} »…`);
+    deps.exec('npx', ['wrangler', 'r2', 'bucket', 'create', bucketName(name)]);
+  }
+
+  // 5. Cloudflare Access
   if (token) {
     const organization = await cloudflare<{ auth_domain: string }>(
       deps,
