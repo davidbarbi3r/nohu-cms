@@ -3,8 +3,9 @@
  *
  * Fait le déterministe (fichiers, base D1, stockage R2, application Access si
  * un jeton est fourni, migrations) puis affiche les étapes restantes du
- * tableau de bord Cloudflare. Toutes les valeurs liées au compte vont dans
- * les fichiers du site (wrangler.jsonc), jamais ailleurs.
+ * tableau de bord Cloudflare. L'accès D1 et l'activation de R2 sont vérifiés
+ * avant toute question et toute création. Toutes les valeurs liées au compte
+ * vont dans les fichiers du site (wrangler.jsonc), jamais ailleurs.
  */
 import { execFileSync } from 'node:child_process';
 import {
@@ -98,6 +99,55 @@ function defaultDeps(cwd: string): InitDeps & { close: () => void } {
     fetch,
     log: (message) => console.info(message),
   };
+}
+
+function wranglerDetail(error: unknown): string {
+  if (!error || typeof error !== 'object') return String(error);
+  const failed = error as {
+    stdout?: unknown;
+    stderr?: unknown;
+    message?: unknown;
+  };
+  const text = [failed.stdout, failed.stderr]
+    .map((part) =>
+      typeof part === 'string'
+        ? part
+        : part instanceof Uint8Array
+          ? new TextDecoder().decode(part)
+          : '',
+    )
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+  return text || String(failed.message ?? error);
+}
+
+/** Liste D1 et buckets R2 : échoue avant de créer quoi que ce soit. */
+function ensureD1AndR2Access(deps: InitDeps, accountId: string) {
+  deps.log('• Vérification de l’accès D1 et de R2…');
+  const problems: string[] = [];
+  try {
+    deps.exec('npx', ['wrangler', 'd1', 'list', '--json']);
+  } catch (error) {
+    problems.push(
+      `D1 inaccessible avec cette session wrangler.\n${wranglerDetail(error)}\nRelance « npx wrangler login » avec un compte qui a le droit D1.`,
+    );
+  }
+  try {
+    deps.exec('npx', ['wrangler', 'r2', 'bucket', 'list']);
+  } catch (error) {
+    const detail = wranglerDetail(error);
+    problems.push(
+      /10042|enable R2/i.test(detail)
+        ? `R2 n’est pas activé sur ce compte. Active-le : https://dash.cloudflare.com/${accountId}/r2\nPuis relance npx nohu-cms init.\n${detail}`
+        : `R2 inaccessible avec cette session wrangler.\n${detail}`,
+    );
+  }
+  if (problems.length) {
+    throw new Error(
+      `Vérification Cloudflare interrompue, rien n’a été créé.\n\n${problems.join('\n\n')}`,
+    );
+  }
 }
 
 function readPackageName(cwd: string) {
@@ -204,6 +254,7 @@ async function run(cwd: string, deps: InitDeps, dryRun: boolean) {
             `Plusieurs comptes Cloudflare (${accounts.join(', ')}). Account ID à utiliser`,
             accounts[0],
           );
+    ensureD1AndR2Access(deps, accountId);
   }
 
   // 3. Questions

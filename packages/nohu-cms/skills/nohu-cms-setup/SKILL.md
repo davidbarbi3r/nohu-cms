@@ -24,6 +24,11 @@ français, et ne jamais inventer une valeur de compte Cloudflare.
 
 ## 2. `npx nohu-cms init`
 
+Avant les questions et avant toute création, la commande vérifie que la
+session wrangler peut lister les bases D1 et les buckets R2. Si R2 n'est pas
+activé sur le compte, elle s'arrête sans rien créer : l'activer dans le
+tableau de bord (le message donne le lien), puis relancer `npx nohu-cms init`.
+
 La commande est interactive : la lancer **dans le terminal de l'utilisateur**
 (`! npx nohu-cms init`), car elle pose des questions et peut demander un jeton.
 Elle demande : nom du site, nom technique du Worker, domaine(s), email(s) des
