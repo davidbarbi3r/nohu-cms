@@ -156,6 +156,9 @@ npm run lint && npm run check
   `cd playground && npx nohu-cms dev`, puis http://localhost:8788/admin.
 - `docs/specs` : conception.
 
+Pour contribuer (issues, pull requests, conventions) : voir
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
 Publier une version : mettre à jour `version` et le CHANGELOG, pousser un tag
 `vX.Y.Z` (il doit correspondre à la version du package). Le workflow `release`
 vérifie tout puis dépose la version sur npm **en attente**, sans jeton (Trusted
