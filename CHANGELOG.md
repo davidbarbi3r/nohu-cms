@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- `init` : vérifier l’accès D1 et l’activation de R2 avant les questions et
+  avant toute création. Si R2 n’est pas activé, rien n’est créé.
+
 ## 0.1.1 — 2026-10-16
 
 - `doctor` : un domaine redirigé vers un autre domaine du site (ex.

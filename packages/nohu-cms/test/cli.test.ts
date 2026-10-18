@@ -1,4 +1,10 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -359,6 +365,130 @@ describe('doctor', () => {
     expect(
       result['www.exemple.fr/api/admin protégé par Cloudflare Access'],
     ).toBe('ok');
+  });
+});
+
+describe('init : accès D1 et R2', () => {
+  const account = '│ Mon compte │ 0123456789abcdef0123456789abcdef │';
+  function failed(stderr: string) {
+    return Object.assign(new Error('Command failed'), { stderr });
+  }
+
+  it('vérifie D1 et R2 avant de créer la base', async () => {
+    const dir = astroProject();
+    const calls: string[] = [];
+    await init({
+      cwd: dir,
+      deps: {
+        ask: answers(
+          'Mon Site',
+          'mon-site',
+          'exemple.fr',
+          'marie@exemple.fr',
+          '',
+        ),
+        exec: (_command, args) => {
+          calls.push(args.join(' '));
+          if (args[1] === 'whoami') return account;
+          if (args[1] === 'd1' && args[2] === 'create') {
+            return '"database_id": "11111111-2222-4333-8444-555555555555"';
+          }
+          if (args[1] === 'd1' && args[2] === 'execute') {
+            return args.includes('--json') ? '[{"results": []}]' : '';
+          }
+          return '';
+        },
+        log: () => {},
+      },
+    });
+    const createAt = calls.indexOf('wrangler d1 create mon-site-cms');
+    expect(calls.indexOf('wrangler d1 list --json')).toBeLessThan(createAt);
+    expect(calls.indexOf('wrangler r2 bucket list')).toBeLessThan(createAt);
+  });
+
+  it('s’arrête avant les questions si D1 est inaccessible', async () => {
+    const dir = astroProject();
+    const calls: string[] = [];
+    const questions: string[] = [];
+    await expect(
+      init({
+        cwd: dir,
+        deps: {
+          ask: async (question) => {
+            questions.push(question);
+            return '';
+          },
+          exec: (_command, args) => {
+            calls.push(args.join(' '));
+            if (args[1] === 'whoami') return account;
+            if (args[1] === 'd1')
+              throw failed('Authentication error [code: 10000]');
+            return '';
+          },
+          log: () => {},
+        },
+      }),
+    ).rejects.toThrow(/D1 inaccessible/);
+    expect(questions).toEqual([]);
+    expect(calls).not.toContain('wrangler d1 create mon-site-cms');
+    expect(existsSync(join(dir, 'wrangler.jsonc'))).toBe(false);
+  });
+
+  it('s’arrête sans créer de base D1 si R2 n’est pas activé', async () => {
+    const dir = astroProject();
+    const calls: string[] = [];
+    await expect(
+      init({
+        cwd: dir,
+        deps: {
+          ask: async () => {
+            throw new Error('question posée');
+          },
+          exec: (_command, args) => {
+            calls.push(args.join(' '));
+            if (args[1] === 'whoami') return account;
+            if (args[1] === 'r2') {
+              throw failed(
+                'Please enable R2 through the Cloudflare Dashboard. [code: 10042]',
+              );
+            }
+            return '[]';
+          },
+          log: () => {},
+        },
+      }),
+    ).rejects.toThrow(
+      /https:\/\/dash\.cloudflare\.com\/0123456789abcdef0123456789abcdef\/r2/,
+    );
+    expect(calls).toContain('wrangler d1 list --json');
+    expect(calls).not.toContain('wrangler d1 create mon-site-cms');
+    expect(existsSync(join(dir, 'wrangler.jsonc'))).toBe(false);
+  });
+
+  it('signale D1 et R2 ensemble, sans rien créer', async () => {
+    const dir = astroProject();
+    const calls: string[] = [];
+    await expect(
+      init({
+        cwd: dir,
+        deps: {
+          ask: async () => '',
+          exec: (_command, args) => {
+            calls.push(args.join(' '));
+            if (args[1] === 'whoami') return account;
+            if (args[1] === 'd1') throw failed('Authentication error');
+            if (args[1] === 'r2') {
+              throw failed('Please enable R2 Subscription [code: 10042]');
+            }
+            return '';
+          },
+          log: () => {},
+        },
+      }),
+    ).rejects.toThrow(/D1 inaccessible[\s\S]*R2 n’est pas activé/);
+    expect(calls).toContain('wrangler d1 list --json');
+    expect(calls).toContain('wrangler r2 bucket list');
+    expect(calls.some((call) => call.includes('d1 create'))).toBe(false);
   });
 });
 
