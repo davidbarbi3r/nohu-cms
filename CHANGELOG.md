@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- `init` : si la base D1 existe déjà, demander avant de la supprimer et de
+  la remplacer. Sans un « oui » explicite, la base et ses données sont
+  conservées.
+
 ## 0.1.1 — 2026-10-16
 
 - `doctor` : un domaine redirigé vers un autre domaine du site (ex.
